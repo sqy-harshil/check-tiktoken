@@ -18,15 +18,15 @@ functions = [
                 },
                 "next_action_item": {
                     "type": "string",
-                    "description": "Detailed analysis of the next action item? (In Detail)",
+                    "description": "Detailed analysis of the next action item.",
                 },
                 "customer_sentiment": {
                     "type": "string",
-                    "description": "Detailed analysis of the customer's sentiment? (In Detail)",
+                    "description": "Detailed analysis of the customer's sentiment",
                 },
                 "performance_of_the_salesperson": {
                     "type": "string",
-                    "description": "Detailed analysis of the performance of the salesperson? ",
+                    "description": "Detailed analysis of the performance of the salesperson",
                 },
             },
         },

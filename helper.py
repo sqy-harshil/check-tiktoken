@@ -49,7 +49,7 @@ def convert_url(url: str) -> Union[BytesIO, HTTPException]:
 
     if not url.endswith(".mp3"):
         raise HTTPException(
-            status_code=400, detail="The provided URL is not an MP3 file."
+            status_code=400, detail="The provided URL is not an MP3 file!"
         )
 
     response = requests.get(url)

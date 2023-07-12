@@ -30,7 +30,7 @@ functions = [
                     "type": "string",
                     "description": "Detailed analysis of the customer's sentiment? (In Detail)",
                 },
-                "performance_of_the_salesperson": {
+                "salesperson_performance": {
                     "type": "string",
                     "description": "Detailed analysis of the performance of the salesperson? ",
                 },
@@ -57,17 +57,12 @@ def convert_url(url: str) -> Union[BytesIO, HTTPException]:
     if response.status_code == 200:
         mp3_content = response.content
         buffer = BytesIO(mp3_content)
-
-        def named_bytes_io(content, name):
-            buffer = BytesIO(content)
-            buffer.name = name
-            return buffer
-
-        return named_bytes_io(mp3_content, "temp.mp3")
-
-    raise HTTPException(
-        status_code=400, detail="The input resource could not be found!"
-    )
+        buffer.name = "temp.mp3"
+        return buffer
+    elif response.status_code == 404:
+        raise HTTPException(
+            status_code=404, detail="The input resource could not be found!"
+        )
 
 
 def get_analysis(audio_file) -> Dict[str, str]:
@@ -94,5 +89,5 @@ def get_analysis(audio_file) -> Dict[str, str]:
     )
 
     arguments = completion["choices"][0]["message"]["function_call"]["arguments"]
-    json_obj = json.loads(arguments)
-    return json_obj
+    json_object = json.loads(arguments)
+    return json_object

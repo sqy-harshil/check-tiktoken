@@ -52,16 +52,27 @@ def convert_url(url: str) -> Union[BytesIO, HTTPException]:
             status_code=400, detail="The provided URL is not an MP3 file!"
         )
 
-    response = requests.get(url)
+    try:
+        response = requests.get(url)
 
-    if response.status_code == 200:
-        mp3_content = response.content
-        buffer = BytesIO(mp3_content)
-        buffer.name = "temp.mp3"
-        return buffer
-    elif response.status_code == 404:
+        if response.status_code == 200:
+            mp3_content = response.content
+            buffer = BytesIO(mp3_content)
+            buffer.name = "temp.mp3"
+            return buffer
+        elif response.status_code == 404:
+            raise HTTPException(
+                status_code=404, detail="The input resource could not be found!"
+            )
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail="An error occurred while fetching the MP3 file!",
+            )
+
+    except requests.RequestException:
         raise HTTPException(
-            status_code=404, detail="The input resource could not be found!"
+            status_code=500, detail="An error occurred while making the HTTP request!"
         )
 
 

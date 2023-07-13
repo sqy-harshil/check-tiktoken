@@ -22,6 +22,7 @@ def index():
 
 @app.post("/get_call_analysis", tags=["Call Analysis"], response_model=AudioResponse)
 def process(audio_url: AudioRequest) -> Dict[str, str]:
+    print(f"Using audio file at: {audio_url.mp3_url}")
     analysis = get_analysis(convert_url(audio_url.mp3_url))
     return analysis
 

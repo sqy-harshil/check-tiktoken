@@ -47,10 +47,11 @@ def convert_url(url: str) -> Union[BytesIO, HTTPException]:
             detail="The server cannot process your request because the provided URL syntax is invalid or malformed!",
         )
 
-    if not url.endswith(".mp3"):
-        raise HTTPException(
-            status_code=400, detail="The provided URL is not an MP3 file!"
-        )
+    # Commenting this check; as all valid mp3 URLs may not necessarily end with .mp3
+    # if not url.endswith(".mp3"):
+    #     raise HTTPException(
+    #         status_code=400, detail="The provided URL is not an MP3 file!"
+    #     )
 
     try:
         response = requests.get(url)

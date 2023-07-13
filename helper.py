@@ -87,11 +87,10 @@ def get_analysis(audio_file) -> Dict[str, str]:
             {
                 "role": "system",
                 "content": """You are a helpful real-estate sales assistant. Based on the transcript log between a human salesperson and a customer, answer the following questions:
-        1. Summary of the call
-        2. What is the next action item?
-        3. What is the customer's sentiment?
-        4. How was the performance of the salesperson
-        """,
+1. Summary of the call
+2. What is the next action item?
+3. What is the customer's sentiment?
+4. How was the performance of the salesperson?""",
             },
             {"role": "user", "content": f"{transcript}"},
         ],

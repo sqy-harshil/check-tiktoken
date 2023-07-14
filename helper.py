@@ -1,7 +1,6 @@
 import json
 import os
 from typing import Dict, Union
-import validators
 import requests
 from io import BytesIO
 

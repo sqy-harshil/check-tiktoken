@@ -1,11 +1,12 @@
-import openai
 import json
 import os
+from typing import Dict, Union
 import validators
 import requests
-from fastapi import HTTPException
 from io import BytesIO
-from typing import Dict, Union
+
+import openai
+from fastapi import HTTPException
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 openai.api_key = OPENAI_API_KEY
@@ -41,12 +42,6 @@ functions = [
 
 
 def convert_url(url: str) -> Union[BytesIO, HTTPException]:
-    if not validators.url(url):
-        raise HTTPException(
-            status_code=400,
-            detail="The server cannot process your request because the provided URL syntax is invalid or malformed!",
-        )
-
     try:
         response = requests.get(url)
 

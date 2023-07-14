@@ -24,7 +24,7 @@ templates = Jinja2Templates(directory="templates")
 
 key = os.getenv("CALL_ANALYSIS_API_KEY")
 
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+api_key_header = APIKeyHeader(name="Call Analysis API Key", auto_error=False)
 
 
 async def get_api_key(

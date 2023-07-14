@@ -3,3 +3,7 @@ sample.txt
 test.py
 
 **.ipynb
+
+.vscode/
+
+vercel.json

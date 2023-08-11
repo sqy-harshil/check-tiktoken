@@ -1,9 +1,2 @@
-__pycache__/
-sample.txt
-test.py
-
+**__pycache__/
 **.ipynb
-
-.vscode/
-
-vercel.json

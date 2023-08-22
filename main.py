@@ -61,8 +61,8 @@ def process(
     "/get_detailed_call_analysis",
     tags=["Call Analysis"],
     response_model=DetailedAudioResponse,
-    description="Get a call analysis of an audio input on 8 parameters",
-    name="Echo-Octa-Sensai",
+    description="Get a call analysis of an audio input on 8 parameters (This is currently in prototyping phase)",
+    name="Echo-Octa-Sensai (Beta)",
 )
 def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)

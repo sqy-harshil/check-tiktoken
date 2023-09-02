@@ -1,5 +1,6 @@
 import os
 from typing import Dict
+from datetime import datetime, timedelta
 
 import uvicorn
 import pymongo
@@ -55,13 +56,19 @@ def index(request: Request):
     description="Get a call analysis of an audio input on 4 parameters",
     name="Echo-Quad-Sensai",
 )
-def process(
+async def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> Dict[str, str]:
     analysis = get_analysis_4(convert_url(audio_url.mp3_url))
 
     simple_analysis = db["simple_analysis"]
+
+    current_utc_timestamp = datetime.utcnow()
+    ist_offset = timedelta(hours=5, minutes=30)
+    current_ist_timestamp = current_utc_timestamp + ist_offset
+
     obj = {
+        "timestamp": current_ist_timestamp,
         "mp3": audio_url.mp3_url,
         "analysis": analysis.json_object,
         "transcript": analysis.script,
@@ -84,7 +91,13 @@ def process(
     analysis = get_analysis_8(convert_url(audio_url.mp3_url))
 
     detailed_analysis = db["detailed_analysis"]
+
+    current_utc_timestamp = datetime.utcnow()
+    ist_offset = timedelta(hours=5, minutes=30)
+    current_ist_timestamp = current_utc_timestamp + ist_offset
+
     obj = {
+        "timestamp": current_ist_timestamp,
         "mp3": audio_url.mp3_url,
         "analysis": analysis.json_object,
         "transcript": analysis.script,

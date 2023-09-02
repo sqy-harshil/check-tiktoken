@@ -11,7 +11,8 @@ from fastapi import HTTPException
 from named_tuples import AnalysisJSON
 
 openai.api_base = "https://api.openai.com/v1"
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("SQY_API_KEY")
 openai.api_type = "open_ai"
 openai.api_version = "2020-10-01"
 
@@ -51,7 +52,7 @@ functions_8 = [
             "type": "object",
             "properties": {
                 "rudeness_or_politeness_metric": {
-                    "type": "string",
+                    "type": "number",
                     "description": """
 This parameter measures the rudeness or politeness metric for the salesperson where a rating of 1 means the salesperson was extremely rude on the call and a rating of 5 means the salesperson was extremely polite
 
@@ -65,7 +66,7 @@ Rating 5:    Extremely Polite: The conversation is exceptionally polite, possibl
 """,
                 },
                 "salesperson_company_introduction": {
-                    "type": "string",
+                    "type": "number",
                     "description": """
 Rate the level of introduction and explanation that salesperson gives to the other end about the organization, if they explains where they are from and positive perks about the organization they shouldreceive a higher rating. Consider some pointers written below as the knowledge base and if salesperson recite these words, it should be considered -
 
@@ -89,7 +90,7 @@ Rating 5 - If the salesperson, describes the company in a very elaborate way as 
 """,
                 },
                 "meeting_request": {
-                    "type": "string",
+                    "type": "number",
                     "description": """
 As a moderator, you have to rate the level of attempts and convincing abilities the salesperson uses to convince the customer to approve a meeting request or approve for visiting properties. In order to give a proper rating, here are some guidelines which should be used to judge the salesperson and give them that respective rating -
     Rating 0 – If salesperson did not have any discussion for the meeting and have not pitched this to the very customer. Their was no use of ‘site visit’ or ‘meeting’ in the conversation.
@@ -97,11 +98,11 @@ As a moderator, you have to rate the level of attempts and convincing abilities 
     Rating 2 – If the salesperson made a clear attempt to push the customer towards meeting or site visit but was not persuasive and agrees to whatsoever the customer says.
     Rating 3 – If the salesperson describes the perks of site visit and pitch the same to the customer with a pro-active approach.
     Rating 4 – If the salesperson, persuade the customer to engage a site visit or meeting to have a look at the properties and describe them the perks of it. Customer might give a yes or no, but judgement has to be on the basis of concerns addressed by the customer.
-    Rating 5 – If the customer, agrees to get the site visit done and have a look at the properties, they confirms that they want to visit the property then give 5 as a rating to the salesperson.
+    Rating 5 – If the customer, agrees to get the site visit done and have a look at the properties, they confirm that they want to visit the property then give 5 as a rating to the salesperson.
                     """,
                 },
                 "salesperson_understanding_of_customer_requirements": {
-                    "type": "string",
+                    "type": "number",
                     "description": """
 Rate the salesperson's ability to understand customer requirements based on the following criteria, using a scale of 1 to 5, where 1 indicates poor performance and 5 indicates effective performance:
 
@@ -126,7 +127,7 @@ Rate the salesperson's ability to understand customer requirements based on the 
                     """,
                 },
                 "customer_sentiment_by_the_end_of_call": {
-                    "type": "string",
+                    "type": "number",
                     "description": """
 Rate the customer's sentiment by the end of the call based on their satisfaction and likelihood to continue engagement with the salesperson. Use a scale of 1 to 5, where 1 indicates the lowest level of satisfaction or likelihood, and 5 indicates the highest level of satisfaction or likelihood.
 
@@ -146,7 +147,7 @@ Rate the customer's sentiment by the end of the call based on their satisfaction
 """,
                 },
                 "customer_eagerness_to_buy": {
-                    "type": "string",
+                    "type": "number",
                     "description": """
 Evaluate the customer's willingness to buy the property based on their level of enthusiasm and interest, using a scale of 1 to 5, where 1 indicates minimal eagerness and 5 indicates strong eagerness to buy in the near future.
 

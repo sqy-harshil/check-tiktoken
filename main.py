@@ -14,9 +14,11 @@ from helper import get_analysis_4, get_analysis_8, convert_url
 
 
 MONGODB_URI = os.getenv("MONGODB_URI")
+CALL_ANALYSIS_DATABASE = os.getenv("CALL_ANALYSIS_DATABASE")
+
 client = pymongo.MongoClient(MONGODB_URI)
 
-db = client["sqy-call-analysis"]
+db = client[CALL_ANALYSIS_DATABASE]
 
 app = FastAPI(
     title="EchoSensai",

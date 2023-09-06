@@ -1,9 +1,10 @@
 import os
 from typing import Dict
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import uvicorn
 import pymongo
+from pymongo.errors import DuplicateKeyError
 from fastapi import FastAPI, HTTPException, Request, Security, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -14,11 +15,8 @@ from helper import get_analysis_4, get_analysis_8, convert_url
 
 
 MONGODB_URI = os.getenv("MONGODB_URI")
-CALL_ANALYSIS_DATABASE = os.getenv("CALL_ANALYSIS_DATABASE")
-
 client = pymongo.MongoClient(MONGODB_URI)
-
-db = client[CALL_ANALYSIS_DATABASE]
+db = client.get_database("sqy-call-analysis")
 
 app = FastAPI(
     title="EchoSensai",
@@ -65,12 +63,8 @@ async def process(
 
     simple_analysis = db["simple_analysis"]
 
-    current_utc_timestamp = datetime.utcnow()
-    ist_offset = timedelta(hours=5, minutes=30)
-    current_ist_timestamp = current_utc_timestamp + ist_offset
-
     obj = {
-        "timestamp": current_ist_timestamp,
+        "timestamp": datetime.now(),
         "mp3": audio_url.mp3_url,
         "analysis": analysis.json_object,
         "transcript": analysis.script,
@@ -90,23 +84,34 @@ async def process(
 def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> Dict[str, str]:
-    analysis = get_analysis_8(convert_url(audio_url.mp3_url))
-
     detailed_analysis = db["detailed_analysis"]
 
-    current_utc_timestamp = datetime.utcnow()
-    ist_offset = timedelta(hours=5, minutes=30)
-    current_ist_timestamp = current_utc_timestamp + ist_offset
+    detailed_analysis.create_index([("mp3", 1)], unique=True)
 
-    obj = {
-        "timestamp": current_ist_timestamp,
-        "mp3": audio_url.mp3_url,
-        "analysis": analysis.json_object,
-        "transcript": analysis.script,
-    }
-    detailed_analysis.insert_one(obj)
+    try:
+        mp3_to_insert = {"mp3": audio_url.mp3_url}
+        inserted_object = detailed_analysis.insert_one(mp3_to_insert)
+        inserted_object_id = inserted_object.inserted_id
 
-    return analysis.json_object
+        processed_analysis = get_analysis_8(convert_url(audio_url.mp3_url))
+
+        analysis = processed_analysis.json_object
+        script = processed_analysis.script
+
+        objects = {
+            "timestamp": datetime.utcnow(),
+            "analysis": analysis,
+            "transcript": script,
+        }
+
+        detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": objects})
+
+    except DuplicateKeyError:
+        print("Element Found!")
+        existing_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})
+        analysis = existing_object["analysis"]
+
+    return analysis
 
 
 if __name__ == "__main__":

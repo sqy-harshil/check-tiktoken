@@ -1,9 +1,9 @@
 import os
 from typing import Dict, Union
-from datetime import datetime
 
 import uvicorn
 import pymongo
+from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
 from fastapi import FastAPI, HTTPException, Request, Security, Depends
 from fastapi.responses import HTMLResponse
@@ -72,7 +72,7 @@ async def process(
         script = processed_analysis.script
 
         document = {
-            "timestamp": datetime.utcnow(),
+            "timestamp": ObjectId(inserted_object_id).generation_time,
             "analysis": analysis,
             "transcript": script,
         }
@@ -109,7 +109,7 @@ def process(
         script = processed_analysis.script
 
         document = {
-            "timestamp": datetime.utcnow(),
+            "timestamp": ObjectId(inserted_object_id).generation_time,
             "analysis": analysis,
             "transcript": script,
         }

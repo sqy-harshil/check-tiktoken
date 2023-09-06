@@ -16,7 +16,7 @@ from helper import get_analysis_4, get_analysis_8, convert_url
 
 MONGODB_URI = os.getenv("MONGODB_URI")
 client = pymongo.MongoClient(MONGODB_URI)
-db = client.get_database("sqy-call-analysis")
+db = client.get_default_database()
 
 app = FastAPI(
     title="EchoSensai",
@@ -71,13 +71,13 @@ async def process(
         analysis = processed_analysis.json_object
         script = processed_analysis.script
 
-        objects = {
+        document = {
             "timestamp": datetime.utcnow(),
             "analysis": analysis,
             "transcript": script,
         }
 
-        simple_analysis.update_one({"_id": inserted_object_id}, {"$set": objects})
+        simple_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
 
     except DuplicateKeyError:
         existing_object = simple_analysis.find_one({"mp3": audio_url.mp3_url})
@@ -108,13 +108,13 @@ def process(
         analysis = processed_analysis.json_object
         script = processed_analysis.script
 
-        objects = {
+        document = {
             "timestamp": datetime.utcnow(),
             "analysis": analysis,
             "transcript": script,
         }
 
-        detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": objects})
+        detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
 
     except DuplicateKeyError:
         existing_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})

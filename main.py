@@ -1,7 +1,10 @@
 import os
-from typing import Dict
+from typing import Dict, Union
+from datetime import datetime
 
 import uvicorn
+import pymongo
+from pymongo.errors import DuplicateKeyError
 from fastapi import FastAPI, HTTPException, Request, Security, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -9,6 +12,11 @@ from fastapi.security import APIKeyHeader
 
 from models import AudioRequest, SimpleAudioResponse, DetailedAudioResponse
 from helper import get_analysis_4, get_analysis_8, convert_url
+
+
+MONGODB_URI = os.getenv("MONGODB_URI")
+client = pymongo.MongoClient(MONGODB_URI)
+db = client.get_default_database()
 
 app = FastAPI(
     title="EchoSensai",
@@ -23,11 +31,9 @@ templates = Jinja2Templates(directory="templates")
 
 key = os.getenv("CALL_ANALYSIS_API_KEY")
 
-# Custom API key header
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-# Dependency function to validate API key
 async def get_api_key(api_key_header: str = Security(api_key_header)):
     if api_key_header:
         if api_key_header == key:
@@ -50,11 +56,34 @@ def index(request: Request):
     description="Get a call analysis of an audio input on 4 parameters",
     name="Echo-Quad-Sensai",
 )
-def process(
+async def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> Dict[str, str]:
-    analysis = get_analysis_4(convert_url(audio_url.mp3_url))
-    return analysis.json_object
+    simple_analysis = db["simple_analysis"]
+
+    try:
+        mp3_to_insert = {"mp3": audio_url.mp3_url}
+        inserted_object = simple_analysis.insert_one(mp3_to_insert)
+        inserted_object_id = inserted_object.inserted_id
+
+        processed_analysis = get_analysis_4(convert_url(audio_url.mp3_url))
+
+        analysis = processed_analysis.json_object
+        script = processed_analysis.script
+
+        document = {
+            "timestamp": datetime.utcnow(),
+            "analysis": analysis,
+            "transcript": script,
+        }
+
+        simple_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
+
+    except DuplicateKeyError:
+        existing_object = simple_analysis.find_one({"mp3": audio_url.mp3_url})
+        analysis = existing_object["analysis"]
+
+    return analysis
 
 
 @app.post(
@@ -66,11 +95,34 @@ def process(
 )
 def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
-) -> Dict[str, str]:
-    analysis = get_analysis_8(convert_url(audio_url.mp3_url))
-    return analysis.json_object
+) -> Dict[str, Union[int, str]]:
+    detailed_analysis = db["detailed_analysis"]
+
+    try:
+        mp3_to_insert = {"mp3": audio_url.mp3_url}
+        inserted_object = detailed_analysis.insert_one(mp3_to_insert)
+        inserted_object_id = inserted_object.inserted_id
+
+        processed_analysis = get_analysis_8(convert_url(audio_url.mp3_url))
+
+        analysis = processed_analysis.json_object
+        script = processed_analysis.script
+
+        document = {
+            "timestamp": datetime.utcnow(),
+            "analysis": analysis,
+            "transcript": script,
+        }
+
+        detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
+
+    except DuplicateKeyError:
+        existing_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})
+        analysis = existing_object["analysis"]
+
+    return analysis
 
 
 if __name__ == "__main__":
     with app:
-        uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
+        uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

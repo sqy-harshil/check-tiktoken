@@ -1,2 +1,11 @@
+# Ignore unrequired folders
 **__pycache__/
+
+# Ignore all ipynb files used for testing
 **.ipynb
+
+# Ignore any call recordings used for testing
+**.mp3
+
+# Ignore .env used for storing environment variables
+.env

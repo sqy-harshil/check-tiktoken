@@ -5,3 +5,4 @@ fastapi==0.95.0
 uvicorn==0.21.1
 validators==0.20.0
 Jinja2==3.0.3
+pymongo==4.3.3

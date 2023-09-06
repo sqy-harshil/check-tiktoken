@@ -60,7 +60,6 @@ async def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> Dict[str, str]:
     simple_analysis = db["simple_analysis"]
-    simple_analysis.create_index([("mp3", 1)], unique=True)
 
     try:
         mp3_to_insert = {"mp3": audio_url.mp3_url}

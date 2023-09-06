@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, Union
 from datetime import datetime
 
 import uvicorn
@@ -59,19 +59,32 @@ def index(request: Request):
 async def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> Dict[str, str]:
-    analysis = get_analysis_4(convert_url(audio_url.mp3_url))
-
     simple_analysis = db["simple_analysis"]
+    simple_analysis.create_index([("mp3", 1)], unique=True)
 
-    obj = {
-        "timestamp": datetime.now(),
-        "mp3": audio_url.mp3_url,
-        "analysis": analysis.json_object,
-        "transcript": analysis.script,
-    }
-    simple_analysis.insert_one(obj)
+    try:
+        mp3_to_insert = {"mp3": audio_url.mp3_url}
+        inserted_object = simple_analysis.insert_one(mp3_to_insert)
+        inserted_object_id = inserted_object.inserted_id
 
-    return analysis.json_object
+        processed_analysis = get_analysis_4(convert_url(audio_url.mp3_url))
+
+        analysis = processed_analysis.json_object
+        script = processed_analysis.script
+
+        objects = {
+            "timestamp": datetime.utcnow(),
+            "analysis": analysis,
+            "transcript": script,
+        }
+
+        simple_analysis.update_one({"_id": inserted_object_id}, {"$set": objects})
+
+    except DuplicateKeyError:
+        existing_object = simple_analysis.find_one({"mp3": audio_url.mp3_url})
+        analysis = existing_object["analysis"]
+
+    return analysis
 
 
 @app.post(
@@ -83,10 +96,8 @@ async def process(
 )
 def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
-) -> Dict[str, str]:
+) -> Dict[str, Union[int, str]]:
     detailed_analysis = db["detailed_analysis"]
-
-    detailed_analysis.create_index([("mp3", 1)], unique=True)
 
     try:
         mp3_to_insert = {"mp3": audio_url.mp3_url}
@@ -107,7 +118,6 @@ def process(
         detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": objects})
 
     except DuplicateKeyError:
-        print("Element Found!")
         existing_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})
         analysis = existing_object["analysis"]
 

@@ -1,9 +1,10 @@
 import os
 from typing import Dict, Union
-from datetime import datetime
+
 
 import uvicorn
 import pymongo
+from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
 from fastapi import FastAPI, HTTPException, Request, Security, Depends
 from fastapi.responses import HTMLResponse
@@ -14,7 +15,7 @@ from models import AudioRequest, SimpleAudioResponse, DetailedAudioResponse
 from helper import get_analysis_4, get_analysis_8, convert_url
 
 
-MONGODB_URI = os.getenv("MONGODB_URI")
+MONGODB_URI = os.getenv("MONGODB_URI_DEV")
 client = pymongo.MongoClient(MONGODB_URI)
 db = client.get_default_database()
 
@@ -66,15 +67,28 @@ async def process(
         inserted_object = simple_analysis.insert_one(mp3_to_insert)
         inserted_object_id = inserted_object.inserted_id
 
-        processed_analysis = get_analysis_4(convert_url(audio_url.mp3_url))
+        try:
+        
+            processed_analysis = get_analysis_4(convert_url(audio_url.mp3_url))
+            analysis = processed_analysis.json_object
+            script = processed_analysis.script
+            log = {
+                "status": "SUCCESS",
+                "error": ""
+            }
 
-        analysis = processed_analysis.json_object
-        script = processed_analysis.script
+        except Exception as e:
+            
+            log = {
+                "status": "FAILED",
+                "error": str(e)
+            }
 
         document = {
-            "timestamp": datetime.utcnow(),
+            "timestamp": ObjectId(inserted_object_id).generation_time,
             "analysis": analysis,
             "transcript": script,
+            "logs": log
         }
 
         simple_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
@@ -103,15 +117,27 @@ def process(
         inserted_object = detailed_analysis.insert_one(mp3_to_insert)
         inserted_object_id = inserted_object.inserted_id
 
-        processed_analysis = get_analysis_8(convert_url(audio_url.mp3_url))
+        try:
+            processed_analysis = get_analysis_8(convert_url(audio_url.mp3_url))
 
-        analysis = processed_analysis.json_object
-        script = processed_analysis.script
+            analysis = processed_analysis.json_object
+            script = processed_analysis.script
+            log = {
+                "status": "SUCCESS",
+                "error": ""
+            }
+        
+        except Exception as e:
+            log = {
+                "status": "FAILURE",
+                "error": str(e)
+            }
 
         document = {
-            "timestamp": datetime.utcnow(),
+            "timestamp": ObjectId(inserted_object_id).generation_time,
             "analysis": analysis,
             "transcript": script,
+            "logs": log
         }
 
         detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": document})

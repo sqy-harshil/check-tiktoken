@@ -94,6 +94,7 @@ async def process(
         simple_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
 
     except DuplicateKeyError:
+        analysis = ""
         existing_object = simple_analysis.find_one({"mp3": audio_url.mp3_url})
         analysis = existing_object["analysis"]
 
@@ -143,6 +144,7 @@ def process(
         detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
 
     except DuplicateKeyError:
+        analysis = ""
         existing_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})
         analysis = existing_object["analysis"]
 

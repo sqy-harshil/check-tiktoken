@@ -6,6 +6,7 @@ import uvicorn
 import pymongo
 from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
+from fastapi.exceptions import ResponseValidationError
 from fastapi import FastAPI, HTTPException, Request, Security, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -68,28 +69,50 @@ async def process(
         inserted_object_id = inserted_object.inserted_id
 
         try:
-        
             processed_analysis = get_analysis_4(convert_url(audio_url.mp3_url))
             analysis = processed_analysis.json_object
             script = processed_analysis.script
+
             log = {
                 "status": "SUCCESS",
-                "error": ""
+                "error_class": "",
+                "error_description": "",
+            }
+
+            document = {
+                "timestamp": ObjectId(inserted_object_id).generation_time,
+                "analysis": analysis,
+                "transcript": script,
+                "logs": log,
+            }
+
+        except ResponseValidationError  as e:
+            log = {
+                "status": "FAILED",
+                "error_class": str(type(e).__name__),
+                "error_description": str(e),
+            }
+
+            document = {
+                "timestamp": ObjectId(inserted_object_id).generation_time,
+                "analysis": "",
+                "transcript": "",
+                "logs": log,
             }
 
         except Exception as e:
-            
             log = {
                 "status": "FAILED",
-                "error": str(e)
+                "error_class": str(type(e).__name__),
+                "error_description": str(e),
             }
 
-        document = {
-            "timestamp": ObjectId(inserted_object_id).generation_time,
-            "analysis": analysis,
-            "transcript": script,
-            "logs": log
-        }
+            document = {
+                "timestamp": ObjectId(inserted_object_id).generation_time,
+                "analysis": "",
+                "transcript": "",
+                "logs": log,
+            }
 
         simple_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
 
@@ -123,23 +146,47 @@ def process(
 
             analysis = processed_analysis.json_object
             script = processed_analysis.script
+
             log = {
                 "status": "SUCCESS",
-                "error": ""
-            }
-        
-        except Exception as e:
-            log = {
-                "status": "FAILURE",
-                "error": str(e)
+                "error_class": "",
+                "error_description": "",
             }
 
-        document = {
-            "timestamp": ObjectId(inserted_object_id).generation_time,
-            "analysis": analysis,
-            "transcript": script,
-            "logs": log
-        }
+            document = {
+                "timestamp": ObjectId(inserted_object_id).generation_time,
+                "analysis": analysis,
+                "transcript": script,
+                "logs": log,
+            }
+
+        except ResponseValidationError as e:
+            log = {
+                "status": "FAILED",
+                "error_class": str(type(e).__name__),
+                "error_description": str(e),
+            }
+
+            document = {
+                "timestamp": ObjectId(inserted_object_id).generation_time,
+                "analysis": "",
+                "transcript": "",
+                "logs": log,
+            }
+
+        except Exception as e:
+            log = {
+                "status": "FAILED",
+                "error_class": str(type(e).__name__),
+                "error_description": str(e),
+            }
+
+            document = {
+                "timestamp": ObjectId(inserted_object_id).generation_time,
+                "analysis": analysis,
+                "transcript": script,
+                "logs": log,
+            }
 
         detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
 

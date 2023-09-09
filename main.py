@@ -16,6 +16,10 @@ from models import AudioRequest, SimpleAudioResponse, DetailedAudioResponse
 from helper import get_analysis_4, get_analysis_8, convert_url
 
 
+from dotenv import load_dotenv
+load_dotenv()
+
+
 MONGODB_URI = os.getenv("MONGODB_URI_DEV")
 client = pymongo.MongoClient(MONGODB_URI)
 db = client.get_default_database()
@@ -62,6 +66,8 @@ async def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> Dict[str, str]:
     simple_analysis = db["simple_analysis"]
+    analysis = ""
+    script = ""
 
     try:
         mp3_to_insert = {"mp3": audio_url.mp3_url}
@@ -100,7 +106,7 @@ async def process(
                 "logs": log,
             }
 
-        except Exception as e:
+        except HTTPException as e:
             log = {
                 "status": "FAILED",
                 "error_class": str(type(e).__name__),
@@ -135,6 +141,8 @@ def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> Dict[str, Union[int, str]]:
     detailed_analysis = db["detailed_analysis"]
+    analysis = ""
+    script = ""
 
     try:
         mp3_to_insert = {"mp3": audio_url.mp3_url}
@@ -174,7 +182,7 @@ def process(
                 "logs": log,
             }
 
-        except Exception as e:
+        except HTTPException as e:
             log = {
                 "status": "FAILED",
                 "error_class": str(type(e).__name__),

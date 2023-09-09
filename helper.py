@@ -19,6 +19,9 @@ from openai.error import (
 
 from named_tuples import AnalysisJSON
 
+from dotenv import load_dotenv
+load_dotenv()
+
 
 functions_4 = [
     {
@@ -236,6 +239,8 @@ def get_analysis_4(audio_file) -> Union[AnalysisJSON, HTTPException]:
             api_type=os.getenv("OPENAI_API_TYPE"),
             api_version=os.getenv("OPENAI_API_VERSION"),
         )
+        transcript = call_log["text"]
+        print(transcript)
     except Timeout:
         raise HTTPException(
             status_code=500,
@@ -267,7 +272,6 @@ def get_analysis_4(audio_file) -> Union[AnalysisJSON, HTTPException]:
             detail="Failed to generate transcript, There was an issue connecting with OpenAI API!",
         )
 
-    transcript = call_log["text"]
     try:
         completion = openai.ChatCompletion.create(
             api_base=os.getenv("AZURE_OPENAI_API_BASE"),
@@ -289,6 +293,7 @@ def get_analysis_4(audio_file) -> Union[AnalysisJSON, HTTPException]:
             functions=functions_4,
             function_call={"name": "call_analysis"},
         )
+        print(completion)
     except Timeout:
         raise HTTPException(
             status_code=500,
@@ -344,6 +349,9 @@ def get_analysis_8(audio_file) -> AnalysisJSON:
             api_type=os.getenv("OPENAI_API_TYPE"),
             api_version=os.getenv("OPENAI_API_VERSION"),
         )
+        transcript = call_log["text"]
+        print(transcript)
+        
     except Timeout:
         raise HTTPException(
             status_code=500,
@@ -374,7 +382,6 @@ def get_analysis_8(audio_file) -> AnalysisJSON:
             status_code=500,
             detail="Failed to generate transcript, There was an issue connecting with OpenAI API!",
         )
-    transcript = call_log["text"]
 
     try:
         completion = openai.ChatCompletion.create(

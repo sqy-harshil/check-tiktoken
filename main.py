@@ -14,7 +14,7 @@ from fastapi.security import APIKeyHeader
 from models import AudioRequest, SimpleAudioResponse, DetailedAudioResponse
 from helper import get_analysis_4, get_analysis_8, convert_url
 
-MONGODB_URI = os.getenv("MONGODB_URI_DEV")
+MONGODB_URI = os.getenv("MONGODB_URI")
 client = pymongo.MongoClient(MONGODB_URI)
 db = client.get_default_database()
 

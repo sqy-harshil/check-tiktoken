@@ -6,7 +6,6 @@ import uvicorn
 import pymongo
 from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
-from fastapi.exceptions import ResponseValidationError
 from fastapi import FastAPI, HTTPException, Request, Security, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -14,11 +13,6 @@ from fastapi.security import APIKeyHeader
 
 from models import AudioRequest, SimpleAudioResponse, DetailedAudioResponse
 from helper import get_analysis_4, get_analysis_8, convert_url
-
-
-from dotenv import load_dotenv
-load_dotenv()
-
 
 MONGODB_URI = os.getenv("MONGODB_URI_DEV")
 client = pymongo.MongoClient(MONGODB_URI)
@@ -59,12 +53,12 @@ def index(request: Request):
     "/get_simple_call_analysis",
     tags=["Call Analysis"],
     response_model=SimpleAudioResponse,
-    description="Get a call analysis of an audio input on 4 parameters",
+    description="Get a call analysis of an audio input on 4 parameters.",
     name="Echo-Quad-Sensai",
 )
 async def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
-) -> Dict[str, str]:
+) -> Union[Dict[str, str], HTTPException]:
     simple_analysis = db["simple_analysis"]
     analysis = ""
     script = ""
@@ -78,6 +72,7 @@ async def process(
             processed_analysis = get_analysis_4(convert_url(audio_url.mp3_url))
             analysis = processed_analysis.json_object
             script = processed_analysis.script
+            usage = processed_analysis.token_usage
 
             log = {
                 "status": "SUCCESS",
@@ -89,20 +84,7 @@ async def process(
                 "timestamp": ObjectId(inserted_object_id).generation_time,
                 "analysis": analysis,
                 "transcript": script,
-                "logs": log,
-            }
-
-        except ResponseValidationError  as e:
-            log = {
-                "status": "FAILED",
-                "error_class": str(type(e).__name__),
-                "error_description": str(e),
-            }
-
-            document = {
-                "timestamp": ObjectId(inserted_object_id).generation_time,
-                "analysis": "",
-                "transcript": "",
+                "gpt35_usage": usage,
                 "logs": log,
             }
 
@@ -110,7 +92,7 @@ async def process(
             log = {
                 "status": "FAILED",
                 "error_class": str(type(e).__name__),
-                "error_description": str(e),
+                "error_description": str(e.detail),
             }
 
             document = {
@@ -134,12 +116,12 @@ async def process(
     "/get_detailed_call_analysis",
     tags=["Call Analysis"],
     response_model=DetailedAudioResponse,
-    description="Get a call analysis of an audio input on 8 parameters (This is currently in prototyping phase)",
-    name="Echo-Octa-Sensai (Beta)",
+    description="Get a call analysis of an audio input on 8 parameters.",
+    name="Echo-Octa-Sensai",
 )
 def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
-) -> Dict[str, Union[int, str]]:
+) -> Union[Dict[str, Union[int, str]], HTTPException]:
     detailed_analysis = db["detailed_analysis"]
     analysis = ""
     script = ""
@@ -154,6 +136,7 @@ def process(
 
             analysis = processed_analysis.json_object
             script = processed_analysis.script
+            usage = processed_analysis.token_usage
 
             log = {
                 "status": "SUCCESS",
@@ -165,28 +148,15 @@ def process(
                 "timestamp": ObjectId(inserted_object_id).generation_time,
                 "analysis": analysis,
                 "transcript": script,
-                "logs": log,
-            }
-
-        except ResponseValidationError as e:
-            log = {
-                "status": "FAILED",
-                "error_class": str(type(e).__name__),
-                "error_description": str(e),
-            }
-
-            document = {
-                "timestamp": ObjectId(inserted_object_id).generation_time,
-                "analysis": "",
-                "transcript": "",
+                "gpt35_usage": usage,
                 "logs": log,
             }
 
         except HTTPException as e:
             log = {
-                "status": "FAILED",
+                "status": "FAILED.",
                 "error_class": str(type(e).__name__),
-                "error_description": str(e),
+                "error_description": str(e.detail),
             }
 
             document = {

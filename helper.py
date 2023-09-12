@@ -7,7 +7,17 @@ from io import BytesIO
 from typing import Union
 
 from fastapi import HTTPException
-
+from pydantic.error_wrappers import ValidationError
+from openai.error import (
+    Timeout,
+    RateLimitError,
+    APIError,
+    ServiceUnavailableError,
+    AuthenticationError,
+    APIConnectionError,
+    InvalidRequestError,
+)
+from models import SimpleAudioResponse, DetailedAudioResponse
 from named_tuples import AnalysisJSON
 
 
@@ -22,17 +32,14 @@ functions_4 = [
                     "type": "string",
                     "description": "Detailed summary of the call.",
                 },
-
                 "next_action_item": {
                     "type": "string",
-                    "description": "Detailed analysis of the next action item? (In Detail)",
+                    "description": "Detailed analysis of the next action item?",
                 },
-
                 "customer_sentiment": {
                     "type": "string",
-                    "description": "Detailed analysis of the customer's sentiment? (In Detail)",
+                    "description": "Detailed analysis of the customer's sentiment?",
                 },
-                
                 "salesperson_performance": {
                     "type": "string",
                     "description": "Detailed analysis of the performance of the salesperson? ",
@@ -48,7 +55,6 @@ functions_8 = [
         "parameters": {
             "type": "object",
             "properties": {
-
                 "rudeness_or_politeness_metric": {
                     "type": "number",
                     "description": """
@@ -63,7 +69,6 @@ functions_8 = [
 
                     """,
                 },
-
                 "salesperson_company_introduction": {
                     "type": "number",
                     "description": """
@@ -87,7 +92,6 @@ functions_8 = [
                             Rating 5 - If the salesperson, describes the company in a very elaborate way as per what is written in the knowledge base and provides a total description of the perks in why should the customer be associated with Square Yards, then give them rating 5.
                     """,
                 },
-
                 "meeting_request": {
                     "type": "number",
                     "description": """
@@ -100,7 +104,6 @@ functions_8 = [
                             Rating 5 – If the customer, agrees to get the site visit done and have a look at the properties, they confirm that they want to visit the property then give 5 as a rating to the salesperson.
                     """,
                 },
-
                 "salesperson_understanding_of_customer_requirements": {
                     "type": "number",
                     "description": """
@@ -125,7 +128,6 @@ functions_8 = [
                                 Rating 5: The salesperson's performance was highly effective in the specified area. 
                         """,
                 },
-
                 "customer_sentiment_by_the_end_of_call": {
                     "type": "number",
                     "description": """
@@ -146,7 +148,6 @@ functions_8 = [
                             Please assign a rating from 1 to 5 based on your assessment of the customer's sentiment by the end of the call, considering both their satisfaction level and likelihood to continue engaging with the salesperson.
                     """,
                 },
-
                 "customer_eagerness_to_buy": {
                     "type": "number",
                     "description": """
@@ -167,7 +168,6 @@ functions_8 = [
                             Please assign a rating from 1 to 5 of the customer's eagerness to buy the property. Consider their tone, expressions, specific statements, and overall enthusiasm when making your evaluation.
                     """,
                 },
-
                 "customer_budget": {
                     "type": "string",
                     "description": """
@@ -186,7 +186,6 @@ functions_8 = [
                             Please carefully consider the customer's explicit statements, if any, about their budget and use your judgment to categorize their budget into the appropriate bucket specifying the bucket name. If the customer did not disclose their budget, "Budget not disclosed." In your classification, ensure that you base your decision solely on the information provided by the customer during the conversation. If the customer's budget falls within a specific range but is not directly mentioned, you can make an informed judgment based on their discussions related to affordability and property
                     """,
                 },
-
                 "customer_preferences": {
                     "type": "string",
                     "description": "Analyze the customer's preferences for purchasing a property based on the provided conversation transcript. Specifically, focus on identifying any explicit mentions of preferred locality, project, or builder, as well as details about the type and size of the property.If the customer's preferences are clear and specific, please provide a representation of their preferences. Please carefully review the conversation and extract any relevant information about the customer's preferences. Consider both explicit statements and implied preferences to capture a comprehensive understanding of what the customer is looking for.",
@@ -228,103 +227,260 @@ def convert_url(url: str) -> Union[BytesIO, HTTPException]:
         )
 
 
-def get_analysis_4(audio_file) -> AnalysisJSON:
-    call_log = openai.Audio.translate(
+def get_analysis_4(audio_file) -> Union[AnalysisJSON, HTTPException]:
+    try:
+        call_log = openai.Audio.translate(
+            model="whisper-1",
+            file=audio_file,
+            api_key=os.getenv("OPENAI_API_KEY"),
+            api_base=os.getenv("OPENAI_API_BASE"),
+            api_type=os.getenv("OPENAI_API_TYPE"),
+            api_version=os.getenv("OPENAI_API_VERSION"),
+        )
+        transcript = call_log["text"]
+    except Timeout as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, request to Whisper API timed out!\n{e.__class__}\n{e._message}",
+        )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, Rate limit occured!\n{e.__class__}\n{e._message}",
+        )
+    except APIError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, The OpenAI servers were down!\n{e.__class__}\n{e._message}",
+        )
+    except ServiceUnavailableError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, The OpenAI services are unavailable at the moment!\n{e.__class__}\n{e._message}",
+        )
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, There was an error authenticating with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
+    except APIConnectionError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, There was an issue connecting with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
 
-        model="whisper-1",
-        file=audio_file,
-        
-        api_key=os.getenv("OPENAI_API_KEY"),
-        api_base=os.getenv("OPENAI_API_BASE"),
-        api_type=os.getenv("OPENAI_API_TYPE"),
-        api_version=os.getenv("OPENAI_API_VERSION"),
-    
-    )
-
-    transcript = call_log["text"]
-
-    completion = openai.ChatCompletion.create(
-    
-        api_base=os.getenv("AZURE_OPENAI_API_BASE"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_type=os.getenv("AZURE_OPENAI_API_TYPE"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-    
-        engine=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
-        messages=[
-            {
-                "role": "system",
-                "content": """You are a helpful real-estate sales assistant. Based on the transcript log between a human salesperson and a customer, answer the following questions:
-                    1. Summary of the call
-                    2. What is the next action item?
-                    3. What is the customer's sentiment?
-                    4. How was the performance of the salesperson?""",
-            },
-    
-            {"role": "user", "content": f"{transcript}"},
-        ],
-    
-        functions=functions_4,
-        function_call={"name": "call_analysis"},
-    )
+    try:
+        completion = openai.ChatCompletion.create(
+            api_base=os.getenv("AZURE_OPENAI_API_BASE"),
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_type=os.getenv("AZURE_OPENAI_API_TYPE"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+            engine=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are a helpful real-estate sales assistant. Based on the transcript log between a human salesperson and a customer, answer the following questions:
+                        1. Summary of the call
+                        2. What is the next action item?
+                        3. What is the customer's sentiment?
+                        4. How was the performance of the salesperson?""",
+                },
+                {"role": "user", "content": f"{transcript}"},
+            ],
+            functions=functions_4,
+            function_call={"name": "call_analysis"},
+        )
+    except Timeout as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, request to Whisper API timed out!\n{e.__class__}\n{e._message}",
+        )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, Rate limit occured!\n{e.__class__}\n{e._message}",
+        )
+    except APIError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, The OpenAI servers were down!\n{e.__class__}\n{e._message}",
+        )
+    except ServiceUnavailableError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, The OpenAI services are unavailable at the moment!\n{e.__class__}\n{e._message}",
+        )
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, There was an error authenticating with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
+    except APIConnectionError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, There was an issue connecting with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
+    except InvalidRequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, There was an issue connecting with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
 
     arguments = completion["choices"][0]["message"]["function_call"]["arguments"]
     usage = completion["usage"]
     json_object = json.loads(arguments)
-    
+
+    try:
+        SimpleAudioResponse(
+            call_summary=json_object["call_summary"],
+            next_action_item=json_object["next_action_item"],
+            customer_sentiment=json_object["customer_sentiment"],
+            salesperson_performance=json_object["salesperson_performance"],
+        )
+    except ValidationError as validationError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing keys from response!\n{validationError.json()}",
+        )
+
     return AnalysisJSON(
         json_object=json_object, token_usage=usage.to_dict(), script=str(transcript)
     )
 
 
 def get_analysis_8(audio_file) -> AnalysisJSON:
-    
-    call_log = openai.Audio.translate(
-        model="whisper-1",
-        file=audio_file,
-    
-        api_key=os.getenv("OPENAI_API_KEY"),
-        api_base=os.getenv("OPENAI_API_BASE"),
-        api_type=os.getenv("OPENAI_API_TYPE"),
-        api_version=os.getenv("OPENAI_API_VERSION"),
-    
-    )
+    try:
+        call_log = openai.Audio.translate(
+            model="whisper-1",
+            file=audio_file,
+            api_key=os.getenv("OPENAI_API_KEY"),
+            api_base=os.getenv("OPENAI_API_BASE"),
+            api_type=os.getenv("OPENAI_API_TYPE"),
+            api_version=os.getenv("OPENAI_API_VERSION"),
+        )
+        transcript = call_log["text"]
 
-    transcript = call_log["text"]
+    except Timeout as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, request to Whisper API timed out!\n{e.__class__}\n Message: {e._message}",
+        )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, Rate limit occured!\n{e.__class__}\n{e._message}",
+        )
+    except APIError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, The OpenAI servers were down!\n{e.__class__}\n{e._message}",
+        )
+    except ServiceUnavailableError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, The OpenAI services are unavailable at the moment!\n{e.__class__}\n{e._message}",
+        )
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, There was an error authenticating with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
+    except APIConnectionError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate transcript, There was an issue connecting with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
 
-    completion = openai.ChatCompletion.create(
-    
-        api_base=os.getenv("AZURE_OPENAI_API_BASE"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_type=os.getenv("AZURE_OPENAI_API_TYPE"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-    
-        engine=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
-        messages=[
-            {"role": "user", "content": f"{transcript}"},
-            {
-                "role": "system",
-                "content": """
-                    You are a helpful real-estate sales assistant. Based on the transcript log between a human salesperson and a customer, analyze the following parameters:
-                        1. rudeness_or_politeness_metric
-                        2. salesperson_company_introduction
-                        3. meeting_request
-                        4. salesperson_understanding_of_customer_requirements
-                        5. customer_sentiment_by_the_end_of_call
-                        6. customer_eagerness_to_buy
-                        7. customer_budget
-                        8. customer_preferences
-                """,
-            },
-        ],
-        
-        functions=functions_8,
-        function_call={"name": "call_analysis"},
-    )
+    try:
+        completion = openai.ChatCompletion.create(
+            api_base=os.getenv("AZURE_OPENAI_API_BASE"),
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_type=os.getenv("AZURE_OPENAI_API_TYPE"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
+            engine=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"),
+            messages=[
+                {"role": "user", "content": f"{transcript}"},
+                {
+                    "role": "system",
+                    "content": """
+                        You are a helpful real-estate sales assistant. Based on the transcript log between a human salesperson and a customer, analyze the following parameters:
+                            1. rudeness_or_politeness_metric
+                            2. salesperson_company_introduction
+                            3. meeting_request
+                            4. salesperson_understanding_of_customer_requirements
+                            5. customer_sentiment_by_the_end_of_call
+                            6. customer_eagerness_to_buy
+                            7. customer_budget
+                            8. customer_preferences
+                    """,
+                },
+            ],
+            functions=functions_8,
+            function_call={"name": "call_analysis"},
+        )
+    except Timeout as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, request to Whisper API timed out!\n{e.__class__}\n{e._message}",
+        )
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, Rate limit occured!\n{e.__class__}\n{e._message}",
+        )
+    except APIError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, The OpenAI servers were down!\n{e.__class__}\n{e._message}",
+        )
+    except ServiceUnavailableError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, The OpenAI services are unavailable at the moment!\n{e.__class__}\n{e._message}",
+        )
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, There was an error authenticating with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
+    except APIConnectionError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, There was an issue connecting with OpenAI API!\n{e.__class__}\n{e._message}",
+        )
+    except InvalidRequestError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate LLM Response, Model's context length is only 4096 tokens!\n{e.__class__}\n{e._message}",
+        )
 
     arguments = completion["choices"][0]["message"]["function_call"]["arguments"]
     usage = completion["usage"]
     json_object = json.loads(arguments)
+
+    try:
+        DetailedAudioResponse(
+            rudeness_or_politeness_metric=json_object["rudeness_or_politeness_metric"],
+            salesperson_company_introduction=json_object[
+                "salesperson_company_introduction"
+            ],
+            meeting_request=json_object["meeting_request"],
+            salesperson_understanding_of_customer_requirements=json_object[
+                "salesperson_understanding_of_customer_requirements"
+            ],
+            customer_sentiment_by_the_end_of_call=json_object[
+                "customer_sentiment_by_the_end_of_call"
+            ],
+            customer_eagerness_to_buy=json_object["customer_eagerness_to_buy"],
+            customer_budget=json_object["customer_budget"],
+            customer_preferences=json_object["customer_preferences"],
+        )
+
+    except ValidationError as validationError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing keys from response!\n{validationError.json()}",
+        )
 
     return AnalysisJSON(
         json_object=json_object, token_usage=usage.to_dict(), script=str(transcript)

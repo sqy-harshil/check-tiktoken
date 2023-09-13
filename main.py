@@ -11,10 +11,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import APIKeyHeader
 
+from config import MONGODB_URI, CALL_ANALYSIS_API_KEY
 from models import AudioRequest, SimpleAudioResponse, DetailedAudioResponse
 from helper import get_analysis_4, get_analysis_8, convert_url
 
-MONGODB_URI = os.getenv("MONGODB_URI")
+
 client = pymongo.MongoClient(MONGODB_URI)
 db = client.get_default_database()
 
@@ -29,15 +30,14 @@ app = FastAPI(
 
 templates = Jinja2Templates(directory="templates")
 
-key = os.getenv("CALL_ANALYSIS_API_KEY")
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def get_api_key(api_key_header: str = Security(api_key_header)):
     if api_key_header:
-        if api_key_header == key:
-            return key
+        if api_key_header == CALL_ANALYSIS_API_KEY:
+            return CALL_ANALYSIS_API_KEY
         else:
             raise HTTPException(status_code=401, detail="Invalid API Key")
     else:

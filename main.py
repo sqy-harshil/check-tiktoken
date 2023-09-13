@@ -22,7 +22,7 @@ db = client.get_default_database()
 app = FastAPI(
     title="EchoSensai",
     description="An advanced AI-powered call analysis API designed to provide comprehensive insights and intelligent recommendations for your conversations.",
-    version="1.0.0",
+    version="1.1.2",
     openapi_tags=[
         {"name": "Call Analysis", "description": "Endpoints for call analysis"},
     ],
@@ -154,7 +154,7 @@ def process(
 
         except HTTPException as e:
             log = {
-                "status": "FAILED.",
+                "status": "FAILED",
                 "error_class": str(type(e).__name__),
                 "error_description": str(e.detail),
             }

@@ -1,5 +1,6 @@
 # Ignore unrequired folders
 **__pycache__/
+.vscode
 
 # Ignore all ipynb files used for testing
 **.ipynb

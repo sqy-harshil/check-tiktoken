@@ -15,5 +15,5 @@ AZURE_OPENAI_PARAMS = {
     "api_version": os.getenv("AZURE_OPENAI_API_VERSION"),
 }
 
-MONGODB_URI = os.getenv("MONGODB_URI_DEV")
+MONGODB_URI = os.getenv("MONGODB_URI")
 CALL_ANALYSIS_API_KEY = os.getenv("CALL_ANALYSIS_API_KEY")

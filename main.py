@@ -1,6 +1,4 @@
-import os
-from typing import Dict, Union
-
+import json
 
 import uvicorn
 import pymongo
@@ -12,12 +10,20 @@ from fastapi.templating import Jinja2Templates
 from fastapi.security import APIKeyHeader
 
 from config import MONGODB_URI, CALL_ANALYSIS_API_KEY
-from models import AudioRequest, SimpleAudioResponse, DetailedAudioResponse
-from helper import get_analysis_4, get_analysis_8, convert_url
+from models import (
+    AudioRequest,
+    DetailedAudioResponse,
+    UsageObject,
+    DiarizedTranscriptObject,
+    RatingsObject,
+    SummaryObject,
+)
+from helper import get_analysis_8, convert_url
 
 
 client = pymongo.MongoClient(MONGODB_URI)
-db = client.get_default_database()
+# db = client.get_default_database()
+db = client.get_database("sqy-call-analysis")
 
 app = FastAPI(
     title="EchoSensai",
@@ -50,69 +56,6 @@ def index(request: Request):
 
 
 @app.post(
-    "/get_simple_call_analysis",
-    tags=["Call Analysis"],
-    response_model=SimpleAudioResponse,
-    description="Get a call analysis of an audio input on 4 parameters.",
-    name="Echo-Quad-Sensai",
-)
-async def process(
-    audio_url: AudioRequest, api_key: str = Depends(get_api_key)
-) -> Union[Dict[str, str], HTTPException]:
-    simple_analysis = db["simple_analysis"]
-    analysis = ""
-    script = ""
-
-    try:
-        mp3_to_insert = {"mp3": audio_url.mp3_url}
-        inserted_object = simple_analysis.insert_one(mp3_to_insert)
-        inserted_object_id = inserted_object.inserted_id
-
-        try:
-            processed_analysis = get_analysis_4(convert_url(audio_url.mp3_url))
-            analysis = processed_analysis.json_object
-            script = processed_analysis.script
-            usage = processed_analysis.token_usage
-
-            log = {
-                "status": "SUCCESS",
-                "error_class": "",
-                "error_description": "",
-            }
-
-            document = {
-                "timestamp": ObjectId(inserted_object_id).generation_time,
-                "analysis": analysis,
-                "transcript": script,
-                "gpt35_usage": usage,
-                "logs": log,
-            }
-
-        except HTTPException as e:
-            log = {
-                "status": "FAILED",
-                "error_class": str(type(e).__name__),
-                "error_description": str(e.detail),
-            }
-
-            document = {
-                "timestamp": ObjectId(inserted_object_id).generation_time,
-                "analysis": "",
-                "transcript": "",
-                "logs": log,
-            }
-
-        simple_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
-
-    except DuplicateKeyError:
-        analysis = ""
-        existing_object = simple_analysis.find_one({"mp3": audio_url.mp3_url})
-        analysis = existing_object["analysis"]
-
-    return analysis
-
-
-@app.post(
     "/get_detailed_call_analysis",
     tags=["Call Analysis"],
     response_model=DetailedAudioResponse,
@@ -121,9 +64,11 @@ async def process(
 )
 def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
-) -> Union[Dict[str, Union[int, str]], HTTPException]:
+) -> DetailedAudioResponse:
     detailed_analysis = db["detailed_analysis"]
-    analysis = ""
+    ratings = ""
+    summary = ""
+    token_usage = ""
     script = ""
 
     try:
@@ -134,9 +79,10 @@ def process(
         try:
             processed_analysis = get_analysis_8(convert_url(audio_url.mp3_url))
 
-            analysis = processed_analysis.json_object
-            script = processed_analysis.script
-            usage = processed_analysis.token_usage
+            ratings = json.loads(processed_analysis.ratings.json())
+            summary = json.loads(processed_analysis.summary.json())
+            script = json.loads(processed_analysis.script.json())
+            token_usage = json.loads(processed_analysis.token_usage.json())
 
             log = {
                 "status": "SUCCESS",
@@ -146,9 +92,10 @@ def process(
 
             document = {
                 "timestamp": ObjectId(inserted_object_id).generation_time,
-                "analysis": analysis,
+                "analysis": ratings,
                 "transcript": script,
-                "gpt35_usage": usage,
+                "summary": summary,
+                "gpt35_usage": token_usage,
                 "logs": log,
             }
 
@@ -161,19 +108,47 @@ def process(
 
             document = {
                 "timestamp": ObjectId(inserted_object_id).generation_time,
-                "analysis": analysis,
+                "analysis": ratings,
                 "transcript": script,
+                "summary": summary,
+                "gpt35_usage": token_usage,
                 "logs": log,
             }
 
         detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
 
     except DuplicateKeyError:
-        analysis = ""
-        existing_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})
-        analysis = existing_object["analysis"]
+        fetched_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})
 
-    return analysis
+        try:
+            mongodb_ratings = fetched_object["analysis"]
+            ratings = RatingsObject(**mongodb_ratings)
+        except KeyError:
+            ratings = None
+        try:
+            mongodb_transcript = fetched_object["transcript"]
+            transcript = DiarizedTranscriptObject(**mongodb_transcript)
+        except KeyError:
+            transcript = None
+        try:
+            mongodb_summary = fetched_object["summary"]
+            summary = SummaryObject(**mongodb_summary)
+        except KeyError:
+            summary = None
+        try:
+            mongodb_token_usage = fetched_object["gpt35_usage"]
+            token_usage = UsageObject(**mongodb_token_usage)
+        except KeyError:
+            token_usage = None
+
+        processed_analysis = DetailedAudioResponse(
+            ratings=ratings,
+            script=transcript,
+            summary=summary,
+            token_usage=token_usage,
+        )
+
+    return processed_analysis
 
 
 if __name__ == "__main__":

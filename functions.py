@@ -172,3 +172,53 @@ FUNCTIONS_8 = [
         },
     }
 ]
+
+DIARIZATION = [
+    {
+        "name": "speaker_classifier",
+        "description": "Identifies between salesperson and customer",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "speaker_0": {
+                    "type": "string",
+                    "enum": ["salesperson: ", "customer: "],
+                    "description": "Wheather [Speaker:0] is a salesperson/customer",
+                },
+                "speaker_1": {
+                    "type": "string",
+                    "enum": ["salesperson: ", "customer: "],
+                    "description": "Wheather [Speaker:1] is a salesperson/customer",
+                },
+            },
+        },
+    }
+]
+
+CALL_SUMMARY = [
+    {
+        "name": "summarize",
+        "description": "Summarizes the conversion and highlights key points.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "Give a short title for the sales call which explains the whole conversation",
+                },
+                "discussion_points": {
+                    "type": "string",
+                    "description": "The key discussion points from the conversation between the salesperson and customer in the form of bullet points",
+                },
+                "customer_queries": {
+                    "type": "string",
+                    "description": "The queries raised by the customer regarding the properties in the form of bullet points",
+                },
+                "next_action_items": {
+                    "type": "string",
+                    "description": "Based on the conversation, what are the next action items for the salesperson in the form of bullet points",
+                },
+            },
+        },
+    }
+]

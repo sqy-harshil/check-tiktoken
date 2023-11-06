@@ -28,7 +28,7 @@ db = client.get_database("sqy-call-analysis")
 app = FastAPI(
     title="EchoSensai",
     description="An advanced AI-powered call analysis API designed to provide comprehensive insights and intelligent recommendations for your conversations.",
-    version="1.1.2",
+    version="1.2.2",
     openapi_tags=[
         {"name": "Call Analysis", "description": "Endpoints for call analysis"},
     ],
@@ -125,16 +125,19 @@ def process(
             ratings = RatingsObject(**mongodb_ratings)
         except KeyError:
             ratings = None
+
         try:
             mongodb_transcript = fetched_object["transcript"]
             transcript = DiarizedTranscriptObject(**mongodb_transcript)
         except KeyError:
             transcript = None
+
         try:
             mongodb_summary = fetched_object["summary"]
             summary = SummaryObject(**mongodb_summary)
         except KeyError:
             summary = None
+
         try:
             mongodb_token_usage = fetched_object["gpt35_usage"]
             token_usage = UsageObject(**mongodb_token_usage)

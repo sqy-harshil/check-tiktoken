@@ -10,3 +10,6 @@
 
 # Ignore .env used for storing environment variables
 .env
+
+# Ignore all the test files
+test**

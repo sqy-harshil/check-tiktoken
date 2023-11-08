@@ -18,13 +18,16 @@ from openai.error import (
     InvalidRequestError,
 )
 
-from config import AZURE_OPENAI_PARAMS, DEEPGRAM_TOKEN
-from functions import FUNCTIONS_4, FUNCTIONS_8, DIARIZATION, CALL_SUMMARY
+from config import AZURE_OPENAI_PARAMS, DEEPGRAM_TOKEN, DEEPGRAM_API_BASE
+from functions import *
+from prompts import *
+from enums import HttpStatusCode
 from models import (
     DiarizedTranscriptObject,
     SummaryObject,
     UsageObject,
     RatingsObject,
+    AudioRequest,
     DetailedAudioResponse,
 )
 
@@ -32,21 +35,22 @@ from models import (
 def convert_url(url: str) -> Union[BytesIO, HTTPException]:
     if not validators.url(url):
         raise HTTPException(
-            status_code=400,
+            status_code=HttpStatusCode.BAD_REQUEST.value,
             detail="The server cannot process your request because the provided URL syntax is invalid or malformed!",
         )
 
     try:
         response = requests.get(url)
 
-        if response.status_code == 200:
+        if response.status_code == HttpStatusCode.OK.value:
             mp3_content = response.content
             buffer = BytesIO(mp3_content)
             buffer.name = "temp.mp3"
             return buffer
-        elif response.status_code == 404:
+        elif response.status_code == HttpStatusCode.NOT_FOUND.value:
             raise HTTPException(
-                status_code=404, detail="The input resource could not be found!"
+                status_code=HttpStatusCode.NOT_FOUND.value,
+                detail="The input resource could not be found!",
             )
         else:
             raise HTTPException(
@@ -56,23 +60,24 @@ def convert_url(url: str) -> Union[BytesIO, HTTPException]:
 
     except requests.RequestException:
         raise HTTPException(
-            status_code=500, detail="An error occurred while making the HTTP request!"
+            status_code=HttpStatusCode.INTERNAL_SERVER_ERROR.value,
+            detail="An error occurred while making the HTTP request!",
         )
 
 
 def get_diarized_output(audio_data):
-    api_url = "https://api.deepgram.com/v1/listen?model=whisper-large&language=en-IN&diarize=true&punctuate=true&utterances=true"
+    print("Preparing diarization")
 
     headers = {
         "Authorization": f"Token {DEEPGRAM_TOKEN}",
         "content-type": "audio/mp3",
     }
 
-    response = requests.post(api_url, headers=headers, data=audio_data)
+    response = requests.post(DEEPGRAM_API_BASE, headers=headers, data=audio_data)
 
     diarized_output = []
 
-    if response.status_code == 200:
+    if response.status_code == HttpStatusCode.OK.value:
         response_json = response.json()
 
         filter_query = '.results.utterances[] | "[Speaker:\(.speaker)] \(.transcript)"'
@@ -84,7 +89,7 @@ def get_diarized_output(audio_data):
 
     else:
         raise HTTPException(
-            status_code=400,
+            status_code=HttpStatusCode.BAD_REQUEST.value,
             detail=f"An error occured while getting results from deepgram API, {response.status_code}:\n{response.text}",
         )
 
@@ -92,6 +97,7 @@ def get_diarized_output(audio_data):
 
 
 def speaker_labels(diarized_output):
+    print("Assigning Speakers")
     speaker_classification = openai.ChatCompletion.create(
         **AZURE_OPENAI_PARAMS,
         messages=[
@@ -101,10 +107,10 @@ def speaker_labels(diarized_output):
             },
             {
                 "role": "system",
-                "content": "You are a classification expert. You will be given a diariation with Speaker 1 and Speaker 0. Your job is to identify which one is a salesperson and which one is a customer",
+                "content": diarization_system_prompt,
             },
         ],
-        functions=DIARIZATION,
+        functions=[DIARIZATION],
         temperature=0.0,
         function_call={"name": "speaker_classifier"},
     )
@@ -119,11 +125,13 @@ def speaker_labels(diarized_output):
         )
     except Exception:
         raise HTTPException(
-            status_code=400, detail=f"Error occured while labelling speakers"
+            status_code=HttpStatusCode.BAD_REQUEST.value,
+            detail=f"Error occured while labelling speakers",
         )
 
 
 def get_summary(transcript):
+    print("Generating Summary")
     summary = openai.ChatCompletion.create(
         **AZURE_OPENAI_PARAMS,
         messages=[
@@ -133,10 +141,10 @@ def get_summary(transcript):
             },
             {
                 "role": "system",
-                "content": "You are an expert call analyst at Square Yards. You will be given a conversation between a customer and salesperson, your task is to generate a summary based on various parameters.",
+                "content": summary_system_prompt,
             },
         ],
-        functions=CALL_SUMMARY,
+        functions=[CALL_SUMMARY],
         temperature=0.0,
         function_call={"name": "summarize"},
     )
@@ -146,10 +154,14 @@ def get_summary(transcript):
             summary["usage"],
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to generate summary")
+        raise HTTPException(
+            status_code=HttpStatusCode.BAD_REQUEST.value,
+            detail=f"Failed to generate summary",
+        )
 
 
 def get_analysis(audio_file, functions) -> DetailedAudioResponse:
+    print("Preparing Analysis")
     try:
         diarized_output = get_diarized_output(audio_file)
         print(diarized_output)
@@ -167,26 +179,18 @@ def get_analysis(audio_file, functions) -> DetailedAudioResponse:
         HTTPException,
     ) as e:
         raise HTTPException(
-            status_code=500,
+            status_code=HttpStatusCode.INTERNAL_SERVER_ERROR.value,
             detail=f"Failed to generate transcript, {e.__class__}!\n{e._message}",
         )
 
     try:
-        completion = openai.ChatCompletion.create(
+        ratings_completion = openai.ChatCompletion.create(
             **AZURE_OPENAI_PARAMS,
             messages=[
-                {
-                    "role": "system",
-                    "content": """
-                        You are a helpful real-estate sales assistant. Based on the transcript log between a human salesperson and a customer, analyze the following parameters:
-                        {}
-                    """.format(
-                        "\n".join(FUNCTIONS_8[0]["parameters"]["properties"].keys())
-                    ),
-                },
-                {"role": "user", "content": f"{diarized_transcript}"},
+                {"role": "system", "content": ratings_system_prompt},
+                {"role": "user", "content": diarized_transcript},
             ],
-            functions=functions,
+            functions=[functions],
             function_call={"name": "call_analysis"},
         )
     except (
@@ -199,7 +203,7 @@ def get_analysis(audio_file, functions) -> DetailedAudioResponse:
         InvalidRequestError,
     ) as e:
         raise HTTPException(
-            status_code=500,
+            status_code=HttpStatusCode.INTERNAL_SERVER_ERROR.value,
             detail=f"Failed to generate LLM Response, {e.__class__}!\n{e._message}",
         )
 
@@ -215,7 +219,9 @@ def get_analysis(audio_file, functions) -> DetailedAudioResponse:
 
     # Prepare Ratings
 
-    ratings_object = completion["choices"][0]["message"]["function_call"]["arguments"]
+    ratings_object = ratings_completion["choices"][0]["message"]["function_call"][
+        "arguments"
+    ]
 
     ratings = json.loads(ratings_object)
 
@@ -236,11 +242,17 @@ def get_analysis(audio_file, functions) -> DetailedAudioResponse:
 
     # Prepare Diarized Transcript
 
-    diarizedTranscriptObject = DiarizedTranscriptObject(diarized_transcript=diarized_transcript)
+    diarizedTranscriptObject = DiarizedTranscriptObject(
+        diarized_transcript=diarized_transcript
+    )
+
+    # Prepare an empty MP3
+
+    mp3Object = AudioRequest(mp3_url=None)
 
     # Prepare Usage
 
-    analysis_usage = completion["usage"]
+    analysis_usage = ratings_completion["usage"]
     label_usage = labels_call_usage
 
     usage = {}
@@ -267,6 +279,7 @@ def get_analysis(audio_file, functions) -> DetailedAudioResponse:
     )
 
     return DetailedAudioResponse(
+        mp3=mp3Object,
         summary=summaryObject,
         ratings=ratingsObject,
         script=diarizedTranscriptObject,

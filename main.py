@@ -18,17 +18,17 @@ from models import (
     RatingsObject,
     SummaryObject,
 )
+from enums import HttpStatusCode
 from helper import get_analysis_8, convert_url
 
 
 client = pymongo.MongoClient(MONGODB_URI)
-# db = client.get_default_database()
-db = client.get_database("sqy-call-analysis")
+db = client.get_default_database()
 
 app = FastAPI(
     title="EchoSensai",
     description="An advanced AI-powered call analysis API designed to provide comprehensive insights and intelligent recommendations for your conversations.",
-    version="1.2.2",
+    version="1.3.2",
     openapi_tags=[
         {"name": "Call Analysis", "description": "Endpoints for call analysis"},
     ],
@@ -45,9 +45,9 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
         if api_key_header == CALL_ANALYSIS_API_KEY:
             return CALL_ANALYSIS_API_KEY
         else:
-            raise HTTPException(status_code=401, detail="Invalid API Key")
+            raise HTTPException(status_code=HttpStatusCode.UNAUTHORIZED.value, detail="Invalid API Key")
     else:
-        raise HTTPException(status_code=400, detail="Please enter an API key")
+        raise HTTPException(status_code=HttpStatusCode.BAD_REQUEST.value, detail="Please enter an API key")
 
 
 @app.get("/", tags=["Index"], response_class=HTMLResponse)
@@ -66,6 +66,7 @@ def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> DetailedAudioResponse:
     detailed_analysis = db["detailed_analysis"]
+    mp3 = ""
     ratings = ""
     summary = ""
     token_usage = ""
@@ -78,6 +79,8 @@ def process(
 
         try:
             processed_analysis = get_analysis_8(convert_url(audio_url.mp3_url))
+
+            processed_analysis.mp3 = audio_url
 
             ratings = json.loads(processed_analysis.ratings.json())
             summary = json.loads(processed_analysis.summary.json())
@@ -121,6 +124,12 @@ def process(
         fetched_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})
 
         try:
+            audio = fetched_object["mp3"]
+            audio_url = AudioRequest(mp3_url=audio)
+        except KeyError:
+            audio_url = None
+
+        try:
             mongodb_ratings = fetched_object["analysis"]
             ratings = RatingsObject(**mongodb_ratings)
         except KeyError:
@@ -145,6 +154,7 @@ def process(
             token_usage = None
 
         processed_analysis = DetailedAudioResponse(
+            mp3=audio_url,
             ratings=ratings,
             script=transcript,
             summary=summary,

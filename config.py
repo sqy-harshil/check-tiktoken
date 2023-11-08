@@ -2,7 +2,9 @@ import os
 
 
 MONGODB_URI = os.getenv("MONGODB_URI")
+
 CALL_ANALYSIS_API_KEY = os.getenv("CALL_ANALYSIS_API_KEY")
+
 DEEPGRAM_API_BASE = os.getenv("DEEPGRAM_API_BASE")
 DEEPGRAM_TOKEN = os.getenv("DEEPGRAM_API_KEY")
 

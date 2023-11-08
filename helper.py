@@ -161,7 +161,6 @@ def get_summary(transcript):
 
 
 def get_analysis(audio_file, functions) -> DetailedAudioResponse:
-    print("Preparing Analysis")
     try:
         diarized_output = get_diarized_output(audio_file)
         print(diarized_output)
@@ -184,6 +183,7 @@ def get_analysis(audio_file, functions) -> DetailedAudioResponse:
         )
 
     try:
+        print("Preparing Analysis")
         ratings_completion = openai.ChatCompletion.create(
             **AZURE_OPENAI_PARAMS,
             messages=[

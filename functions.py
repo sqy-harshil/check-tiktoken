@@ -1,7 +1,7 @@
 from prompts import *
 
 
-FUNCTIONS_8 = {
+ANALYZE = {
     "name": "call_analysis",
     "description": "Shows a detailed analysis of the call.",
     "parameters": {
@@ -44,7 +44,7 @@ FUNCTIONS_8 = {
 }
 
 
-DIARIZATION = {
+LABEL_SPEAKERS = {
     "name": "speaker_classifier",
     "description": "Identifies between salesperson and customer",
     "parameters": {
@@ -64,7 +64,7 @@ DIARIZATION = {
     },
 }
 
-CALL_SUMMARY = {
+SUMMARIZE_CALL = {
     "name": "summarize",
     "description": "Summarizes the conversion and highlights key points.",
     "parameters": {
@@ -85,6 +85,10 @@ CALL_SUMMARY = {
             "next_action_items": {
                 "type": "string",
                 "description": summary_next_action_items,
+            },
+            "meeting_request_attempt": {
+                "type": "string",
+                "description": summary_meeting_request_attempt,
             },
         },
     },

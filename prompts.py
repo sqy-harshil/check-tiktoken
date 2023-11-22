@@ -40,14 +40,23 @@ Evaluate the salesperson's performance with regard to introducing the company. T
 """.strip()
 
 
-ratings_meeting_request = """As a sales company, it is very important for SquareYards to pay the salesperson according to his performance and convincing abilities to fix a meeting. In that case, a salesperson who is trying their level best is supposed to be paid more than the salesperson who is not trying or even convincing the customer to pay a site visit.
+ratings_meeting_request = """
+    <remember>
+        - Location Details, Investments, and Minimum Budgets: The salesperson might provide specific location details, investments, or minimum budgets during the conversation. Please note that these details could be intended for the customer's analysis and understanding and may not necessarily indicate an immediate meeting request.
+        - Exchanging Phone Numbers and Sharing Property Details: Exchanging phone numbers or sharing property details, including location information, may not be indicative of an immediate meeting request. Consider these actions as part of the ongoing assistance and information-sharing process.
+        - Clear Mention of "Meeting" or "Site Visit" with Discussions on Date and Time:  A clear mention of the words "meeting" or "site visit," along with discussions on date and time, is indicative of a meeting request.
+    </remember>
 
-    1: The salesperson did not make any effort to mention anything about property visits or a meeting with the customer.
-    2: The salesperson made an effort but did not try to convince the customer by talking about the perks of site visits or meetings. 
-    3: The salesperson persuades the customer enough to engage in a site visit or meeting to have a look at the properties and motivate them by also explaining the perks of visiting the property. The salesperson was also not forcing the customer too much.
-    4: The salesperson tries to motivate and explain the perks of visiting the property without being too pushy. The salesperson provided clear, compelling reasons, answered all questions, and left the customer feeling genuinely interested in the visit. 
+    Evaluate the salesperson's effort to encourage a meeting or site visit on a scale from 1 to 4, considering the following:
 
-    """.strip()
+    1. No Explicit Attempt or Mention to Encourage a Meeting or Site Visit: The salesperson made no explicit attempt or mention to encourage a meeting or site visit. There was no clear indication of a desire for continued communication.
+
+    2. Minimal Effort: The salesperson made minimal effort to encourage a meeting or site visit, such as asking basic questions. There was a subtle attempt to express openness to ongoing communication.
+
+    3. Moderate Effort: The salesperson actively attempted to engage the customer by explaining property details, responding to queries, and suggesting further communication channels.
+
+    4. High Effort with Clear Intent for Further Interaction: The salesperson was highly engaged, providing detailed information, addressing queries comprehensively, and expressing a clear intent for a meeting or site visit. Look for a clear mention of the words "meeting" or "site visit" along with discussions on date and time for a meeting.
+""".strip()
 
 
 ratings_requirement_understanding = """Rate the salesperson's ability to understand customer requirements based on the following criteria, using a scale of 1 to 4, where 1 indicates poor performance and 4 indicates effective performance on the basis of these points:
@@ -128,3 +137,5 @@ summary_discussion_points = "The key discussion points from the conversation bet
 summary_customer_queries = "The queries raised by the customer regarding the properties in the form of bullet points."
 
 summary_next_action_items = "Based on the conversation, what are the next action items for the salesperson in the form of bullet points."
+
+summary_meeting_request_attempt = "Based on the conversation, did the salesperson make any attempts to convince the customer to pay a visit at the property or properties being discussed in the conversation or no. Note, even if the salesperson simply asks the customer to make a site visit or talks about meeting in general then it's a valid case. Either ways, explain the situation in the form of bullet points. If the salesperson did not try to ask the customer for a meeting request or a site visit provide some suggestions in the form of bullet points of how should similar calls be handled by the salesperson in terms of requesting the customer to pay a site visit. Suggest some tips that top sales people use for convincing that always works."

@@ -21,6 +21,7 @@ class SummaryObject(BaseModel):
     title: Optional[str]
     discussion_points: Optional[str]
     customer_queries: Optional[str]
+    meeting_request_attempt: Optional[str]
     next_action_items: Optional[str]
 
 

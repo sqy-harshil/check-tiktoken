@@ -1,35 +1,29 @@
 import json
-import os
 import validators
 import requests
+import re
 from io import BytesIO
 
 import openai
 from typing import Union
 from jq import jq
 from fastapi import HTTPException
-from openai.error import (
-    Timeout,
-    RateLimitError,
-    APIError,
-    ServiceUnavailableError,
-    AuthenticationError,
-    APIConnectionError,
-    InvalidRequestError,
-)
 
-from config import AZURE_OPENAI_PARAMS, DEEPGRAM_TOKEN, DEEPGRAM_API_BASE
-from functions import *
-from prompts import *
-from enums import HttpStatusCode
-from models import (
-    DiarizedTranscriptObject,
-    SummaryObject,
-    UsageObject,
-    RatingsObject,
-    AudioRequest,
-    DetailedAudioResponse,
+from config import (
+    AZURE_OPENAI_PARAMS,
+    SEED,
 )
+from prompts import *
+from exceptions import *
+from enums import HttpStatusCode
+
+
+def remove_whitespace_between_brackets(text):
+    pattern = re.compile(r"\[\s*Speaker:\s*(\d+)\s*\]")
+
+    result = re.sub(pattern, lambda match: f"[Speaker:{match.group(1)}]", text)
+
+    return result
 
 
 def convert_url(url: str) -> Union[BytesIO, HTTPException]:
@@ -65,15 +59,16 @@ def convert_url(url: str) -> Union[BytesIO, HTTPException]:
         )
 
 
-def get_diarized_output(audio_data):
+def get_diarized_output(audio_data, token, deepgram_api_base):
+
     print("Preparing diarization")
 
     headers = {
-        "Authorization": f"Token {DEEPGRAM_TOKEN}",
+        "Authorization": f"Token {token}",
         "content-type": "audio/mp3",
     }
 
-    response = requests.post(DEEPGRAM_API_BASE, headers=headers, data=audio_data)
+    response = requests.post(deepgram_api_base, headers=headers, data=audio_data)
 
     diarized_output = []
 
@@ -84,7 +79,6 @@ def get_diarized_output(audio_data):
         result = jq(filter_query).input(response_json)
 
         for item in result.all():
-            print(item)
             diarized_output.append(item)
 
     else:
@@ -93,33 +87,28 @@ def get_diarized_output(audio_data):
             detail=f"An error occured while getting results from deepgram API, {response.status_code}:\n{response.text}",
         )
 
-    return "\n".join(diarized_output)
+    return remove_whitespace_between_brackets("\n".join(diarized_output))
 
 
-def speaker_labels(diarized_output):
-    print("Assigning Speakers")
+def get_speaker_labels(diarized_output, function):
+
+    print("Labelling Speakers")
+
     speaker_classification = openai.ChatCompletion.create(
         **AZURE_OPENAI_PARAMS,
+        seed=SEED,
         messages=[
-            {
-                "role": "user",
-                "content": diarized_output,
-            },
-            {
-                "role": "system",
-                "content": diarization_system_prompt,
-            },
+            {"role": "user", "content": diarized_output},
+            {"role": "system", "content": diarization_system_prompt},
         ],
-        functions=[DIARIZATION],
+        functions=[function],
         temperature=0.0,
         function_call={"name": "speaker_classifier"},
     )
     try:
         return (
             json.loads(
-                speaker_classification["choices"][0]["message"]["function_call"][
-                    "arguments"
-                ]
+                speaker_classification["choices"][0]["message"]["function_call"]["arguments"]
             ),
             speaker_classification["usage"],
         )
@@ -130,21 +119,15 @@ def speaker_labels(diarized_output):
         )
 
 
-def get_summary(transcript):
-    print("Generating Summary")
+def get_summary(transcript, function):
     summary = openai.ChatCompletion.create(
         **AZURE_OPENAI_PARAMS,
+        seed=SEED,
         messages=[
-            {
-                "role": "user",
-                "content": "Conversation: \n\n" + transcript,
-            },
-            {
-                "role": "system",
-                "content": summary_system_prompt,
-            },
+            {"role": "user", "content": "Conversation: \n\n" + transcript},
+            {"role": "system", "content": summary_system_prompt},
         ],
-        functions=[CALL_SUMMARY],
+        functions=[function],
         temperature=0.0,
         function_call={"name": "summarize"},
     )
@@ -153,139 +136,44 @@ def get_summary(transcript):
             json.loads(summary["choices"][0]["message"]["function_call"]["arguments"]),
             summary["usage"],
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=HttpStatusCode.BAD_REQUEST.value,
             detail=f"Failed to generate summary",
         )
 
 
-def get_analysis(audio_file, functions) -> DetailedAudioResponse:
-    try:
-        diarized_output = get_diarized_output(audio_file)
-        print(diarized_output)
-        labels, labels_call_usage = speaker_labels(diarized_output)
-        diarized_transcript = diarized_output.replace(
-            "[Speaker:0]", labels["speaker_0"]
-        ).replace("[Speaker:1]", labels["speaker_1"])
-    except (
-        Timeout,
-        RateLimitError,
-        APIError,
-        ServiceUnavailableError,
-        AuthenticationError,
-        APIConnectionError,
-        HTTPException,
-    ) as e:
-        raise HTTPException(
-            status_code=HttpStatusCode.INTERNAL_SERVER_ERROR.value,
-            detail=f"Failed to generate transcript, {e.__class__}!\n{e._message}",
-        )
+def get_ratings(diarized_transcript, function):
 
-    try:
-        print("Preparing Analysis")
-        ratings_completion = openai.ChatCompletion.create(
-            **AZURE_OPENAI_PARAMS,
-            messages=[
-                {"role": "system", "content": ratings_system_prompt},
-                {"role": "user", "content": diarized_transcript},
-            ],
-            functions=[functions],
-            function_call={"name": "call_analysis"},
-        )
-    except (
-        Timeout,
-        RateLimitError,
-        APIError,
-        ServiceUnavailableError,
-        AuthenticationError,
-        APIConnectionError,
-        InvalidRequestError,
-    ) as e:
-        raise HTTPException(
-            status_code=HttpStatusCode.INTERNAL_SERVER_ERROR.value,
-            detail=f"Failed to generate LLM Response, {e.__class__}!\n{e._message}",
-        )
+    print("Preparing Ratings")
 
-    # Prepare Summary
-
-    summary, sumamry_usage = get_summary(diarized_transcript)
-    summaryObject = SummaryObject(
-        title=summary["title"],
-        discussion_points=summary["discussion_points"],
-        customer_queries=summary["customer_queries"],
-        next_action_items=summary["next_action_items"],
-    )
-
-    # Prepare Ratings
-
-    ratings_object = ratings_completion["choices"][0]["message"]["function_call"][
-        "arguments"
-    ]
-
-    ratings = json.loads(ratings_object)
-
-    ratingsObject = RatingsObject(
-        customer_budget=ratings["customer_budget"],
-        customer_eagerness_to_buy=ratings["customer_eagerness_to_buy"],
-        customer_preferences=ratings["customer_preferences"],
-        customer_sentiment_by_the_end_of_call=ratings[
-            "customer_sentiment_by_the_end_of_call"
+    ratings_completion = openai.ChatCompletion.create(
+        **AZURE_OPENAI_PARAMS,
+        seed=SEED,
+        messages=[
+            {"role": "system", "content": ratings_system_prompt},
+            {"role": "user", "content": diarized_transcript},
         ],
-        meeting_request=ratings["meeting_request"],
-        rudeness_or_politeness_metric=ratings["rudeness_or_politeness_metric"],
-        salesperson_company_introduction=ratings["salesperson_company_introduction"],
-        salesperson_understanding_of_customer_requirements=ratings[
-            "salesperson_understanding_of_customer_requirements"
-        ],
+        functions=[function], 
+        function_call={"name": "call_analysis"},
     )
-
-    # Prepare Diarized Transcript
-
-    diarizedTranscriptObject = DiarizedTranscriptObject(
-        diarized_transcript=diarized_transcript
-    )
-
-    # Prepare an empty MP3
-
-    mp3Object = AudioRequest(mp3_url=None)
-
-    # Prepare Usage
-
-    analysis_usage = ratings_completion["usage"]
-    label_usage = labels_call_usage
-
-    usage = {}
-    usage["prompt_tokens"] = (
-        analysis_usage["prompt_tokens"]
-        + label_usage["prompt_tokens"]
-        + sumamry_usage["prompt_tokens"]
-    )
-    usage["completion_tokens"] = (
-        analysis_usage["completion_tokens"]
-        + label_usage["completion_tokens"]
-        + sumamry_usage["completion_tokens"]
-    )
-    usage["total_tokens"] = (
-        analysis_usage["total_tokens"]
-        + label_usage["total_tokens"]
-        + sumamry_usage["total_tokens"]
-    )
-
-    usageObject = UsageObject(
-        prompt_tokens=usage["prompt_tokens"],
-        completion_tokens=usage["completion_tokens"],
-        total_tokens=usage["total_tokens"],
-    )
-
-    return DetailedAudioResponse(
-        mp3=mp3Object,
-        summary=summaryObject,
-        ratings=ratingsObject,
-        script=diarizedTranscriptObject,
-        token_usage=usageObject,
+    return (
+        json.loads(
+            ratings_completion["choices"][0]["message"]["function_call"]["arguments"]
+        ),
+        ratings_completion["usage"],
     )
 
 
-def get_analysis_8(audio_file) -> DetailedAudioResponse:
-    return get_analysis(audio_file, FUNCTIONS_8)
+def validate_speaker_count(text: str):
+    pattern = re.compile(r"\[speaker:(\d+)\]:.*")
+
+    matches = pattern.findall(text.lower())
+
+    unique_speakers = set(matches)
+
+    if len(unique_speakers) == 2:
+        return text
+    else:
+        raise InvalidSpeakerCountException("Invalid number of speakers. Expected 2, found {}".format(len(unique_speakers)))
+    

@@ -1,7 +1,4 @@
-import json
-
 import uvicorn
-import pymongo
 from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
 from fastapi import FastAPI, HTTPException, Request, Security, Depends
@@ -9,7 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import APIKeyHeader
 
-from config import MONGODB_URI, CALL_ANALYSIS_API_KEY
+from config import CALL_ANALYSIS_API_KEY
 from models import (
     AudioRequest,
     DetailedAudioResponse,
@@ -18,12 +15,9 @@ from models import (
     RatingsObject,
     SummaryObject,
 )
+from mongodb import collection
 from enums import HttpStatusCode
-from helper import get_analysis_8, convert_url
-
-
-client = pymongo.MongoClient(MONGODB_URI)
-db = client.get_default_database()
+from pipelines import prepare_analysis
 
 app = FastAPI(
     title="EchoSensai",
@@ -45,9 +39,14 @@ async def get_api_key(api_key_header: str = Security(api_key_header)):
         if api_key_header == CALL_ANALYSIS_API_KEY:
             return CALL_ANALYSIS_API_KEY
         else:
-            raise HTTPException(status_code=HttpStatusCode.UNAUTHORIZED.value, detail="Invalid API Key")
+            raise HTTPException(
+                status_code=HttpStatusCode.UNAUTHORIZED.value, detail="Invalid API Key"
+            )
     else:
-        raise HTTPException(status_code=HttpStatusCode.BAD_REQUEST.value, detail="Please enter an API key")
+        raise HTTPException(
+            status_code=HttpStatusCode.BAD_REQUEST.value,
+            detail="Please enter an API key",
+        )
 
 
 @app.get("/", tags=["Index"], response_class=HTMLResponse)
@@ -65,27 +64,19 @@ def index(request: Request):
 def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> DetailedAudioResponse:
-    detailed_analysis = db["detailed_analysis"]
-    mp3 = ""
-    ratings = ""
-    summary = ""
-    token_usage = ""
-    script = ""
+    
+    print("-"* 150)
+    print()
+    print(f"\033[36mprocessing call: {audio_url.mp3_url}\033[0m")
+    print()
 
     try:
         mp3_to_insert = {"mp3": audio_url.mp3_url}
-        inserted_object = detailed_analysis.insert_one(mp3_to_insert)
+        inserted_object = collection.insert_one(mp3_to_insert)
         inserted_object_id = inserted_object.inserted_id
 
         try:
-            processed_analysis = get_analysis_8(convert_url(audio_url.mp3_url))
-
-            processed_analysis.mp3 = audio_url
-
-            ratings = json.loads(processed_analysis.ratings.json())
-            summary = json.loads(processed_analysis.summary.json())
-            script = json.loads(processed_analysis.script.json())
-            token_usage = json.loads(processed_analysis.token_usage.json())
+            processed_analysis = prepare_analysis(audio_url)
 
             log = {
                 "status": "SUCCESS",
@@ -95,10 +86,6 @@ def process(
 
             document = {
                 "timestamp": ObjectId(inserted_object_id).generation_time,
-                "analysis": ratings,
-                "transcript": script,
-                "summary": summary,
-                "gpt35_usage": token_usage,
                 "logs": log,
             }
 
@@ -108,20 +95,23 @@ def process(
                 "error_class": str(type(e).__name__),
                 "error_description": str(e.detail),
             }
-
             document = {
                 "timestamp": ObjectId(inserted_object_id).generation_time,
-                "analysis": ratings,
-                "transcript": script,
-                "summary": summary,
-                "gpt35_usage": token_usage,
                 "logs": log,
             }
 
-        detailed_analysis.update_one({"_id": inserted_object_id}, {"$set": document})
+        collection.update_one({"_id": inserted_object_id}, {"$set": document})
+
+        print()
+        print("\033[36mcall processed!\033[0m")
+        print()
+        print("-"* 150)
+        print()
+
+        return processed_analysis
 
     except DuplicateKeyError:
-        fetched_object = detailed_analysis.find_one({"mp3": audio_url.mp3_url})
+        fetched_object = collection.find_one({"mp3": audio_url.mp3_url})
 
         try:
             audio = fetched_object["mp3"]
@@ -160,8 +150,15 @@ def process(
             summary=summary,
             token_usage=token_usage,
         )
+        
+        print()
+        print("\033[36mcall analysis already exists in the database!\033[0m")
+        print()
+        print("-"* 150)
+        print()
 
-    return processed_analysis
+        return processed_analysis
+    
 
 
 if __name__ == "__main__":

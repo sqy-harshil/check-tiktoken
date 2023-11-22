@@ -1,7 +1,7 @@
 from prompts import *
 
 
-ANALYZE = {
+EVALUATE_PARAMETERS = {
     "name": "call_analysis",
     "description": "Shows a detailed analysis of the call.",
     "parameters": {

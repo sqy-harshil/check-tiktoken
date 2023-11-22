@@ -18,7 +18,7 @@ from helper import (
 )
 from config import DEEPGRAM_API_BASE, DEEPGRAM_TOKEN
 from mongodb import collection
-from functions import ANALYZE, SUMMARIZE_CALL, LABEL_SPEAKERS
+from functions import EVALUATE_PARAMETERS, SUMMARIZE_CALL, LABEL_SPEAKERS
 from models import (
     DiarizedTranscriptObject,
     SummaryObject,
@@ -82,7 +82,7 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
 
 
         # Step 5: Prepare Ratings & store it in the Database
-        ratings, rating_usage = get_ratings(diarized_transcript, ANALYZE)
+        ratings, rating_usage = get_ratings(diarized_transcript, EVALUATE_PARAMETERS)
         ratingsObject = RatingsObject(
             customer_budget=ratings["customer_budget"],
             customer_eagerness_to_buy=ratings["customer_eagerness_to_buy"],

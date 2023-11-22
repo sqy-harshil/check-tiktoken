@@ -14,7 +14,7 @@ from config import (
     SEED,
 )
 from prompts import *
-from exceptions import *
+from exceptions import InvalidSpeakerCountException
 from enums import HttpStatusCode
 
 

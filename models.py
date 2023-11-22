@@ -33,11 +33,12 @@ class UsageObject(BaseModel):
 
 class DiarizedTranscriptObject(BaseModel):
     diarized_transcript: Optional[str]
+    raw_transcript: Optional[str]
 
 
 class DetailedAudioResponse(BaseModel):
     mp3: Optional[AudioRequest]
-    ratings: Optional[RatingsObject] 
-    summary: Optional[SummaryObject] 
-    script: Optional[DiarizedTranscriptObject] 
-    token_usage: Optional[UsageObject] 
+    ratings: Optional[RatingsObject]
+    summary: Optional[SummaryObject]
+    script: Optional[DiarizedTranscriptObject]
+    token_usage: Optional[UsageObject]

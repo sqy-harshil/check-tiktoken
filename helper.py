@@ -19,6 +19,8 @@ from enums import HttpStatusCode
 
 
 def remove_whitespace_between_brackets(text):
+    """Remove whitespace between brackets as a precaution"""
+
     pattern = re.compile(r"\[\s*Speaker:\s*(\d+)\s*\]")
 
     result = re.sub(pattern, lambda match: f"[Speaker:{match.group(1)}]", text)
@@ -27,6 +29,8 @@ def remove_whitespace_between_brackets(text):
 
 
 def convert_url(url: str) -> Union[BytesIO, HTTPException]:
+    """Convert an MP3 URL of a string object into BytesIO object"""
+
     if not validators.url(url):
         raise HTTPException(
             status_code=HttpStatusCode.BAD_REQUEST.value,
@@ -60,6 +64,7 @@ def convert_url(url: str) -> Union[BytesIO, HTTPException]:
 
 
 def get_diarized_output(audio_data, token, deepgram_api_base):
+    """Get a diarized output from Deepgram API"""
 
     print("Preparing diarization")
 
@@ -91,6 +96,7 @@ def get_diarized_output(audio_data, token, deepgram_api_base):
 
 
 def get_speaker_labels(diarized_output, function):
+    """Get the corresponding labels for the speakers on the basis of a diarized transcript"""
 
     print("Labelling Speakers")
 
@@ -108,7 +114,9 @@ def get_speaker_labels(diarized_output, function):
     try:
         return (
             json.loads(
-                speaker_classification["choices"][0]["message"]["function_call"]["arguments"]
+                speaker_classification["choices"][0]["message"]["function_call"][
+                    "arguments"
+                ]
             ),
             speaker_classification["usage"],
         )
@@ -120,6 +128,8 @@ def get_speaker_labels(diarized_output, function):
 
 
 def get_summary(transcript, function):
+    """Get an AI powered call summary"""
+
     summary = openai.ChatCompletion.create(
         **AZURE_OPENAI_PARAMS,
         seed=SEED,
@@ -144,6 +154,7 @@ def get_summary(transcript, function):
 
 
 def get_ratings(diarized_transcript, function):
+    """Get an AI powered parameter evaluation"""
 
     print("Preparing Ratings")
 
@@ -154,7 +165,7 @@ def get_ratings(diarized_transcript, function):
             {"role": "system", "content": ratings_system_prompt},
             {"role": "user", "content": diarized_transcript},
         ],
-        functions=[function], 
+        functions=[function],
         function_call={"name": "call_analysis"},
     )
     return (
@@ -166,7 +177,9 @@ def get_ratings(diarized_transcript, function):
 
 
 def validate_speaker_count(text: str):
-    pattern = re.compile(r"\[speaker:(\d+)\]:.*")
+    """Validate if the Deepgram API generates only two speakers"""
+
+    pattern = re.compile(r"\[speaker:(\d+)\]")
 
     matches = pattern.findall(text.lower())
 
@@ -175,5 +188,8 @@ def validate_speaker_count(text: str):
     if len(unique_speakers) == 2:
         return text
     else:
-        raise InvalidSpeakerCountException("Invalid number of speakers. Expected 2, found {}".format(len(unique_speakers)))
-    
+        raise InvalidSpeakerCountException(
+            "Invalid number of speakers. Expected 2, found {}".format(
+                len(unique_speakers)
+            )
+        )

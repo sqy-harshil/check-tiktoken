@@ -64,8 +64,9 @@ def index(request: Request):
 def process(
     audio_url: AudioRequest, api_key: str = Depends(get_api_key)
 ) -> DetailedAudioResponse:
-    
-    print("-"* 150)
+    print()
+    print()
+    print("-" * 150)
     print()
     print(f"\033[36mprocessing call: {audio_url.mp3_url}\033[0m")
     print()
@@ -105,7 +106,7 @@ def process(
         print()
         print("\033[36mcall processed!\033[0m")
         print()
-        print("-"* 150)
+        print("-" * 150)
         print()
 
         return processed_analysis
@@ -150,15 +151,17 @@ def process(
             summary=summary,
             token_usage=token_usage,
         )
-        
+
         print()
         print("\033[36mcall analysis already exists in the database!\033[0m")
         print()
-        print("-"* 150)
+        print("-" * 150)
+        print()
+        print()
         print()
 
         return processed_analysis
-    
+
 
 if __name__ == "__main__":
     with app:

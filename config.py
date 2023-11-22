@@ -16,11 +16,4 @@ AZURE_OPENAI_PARAMS = {
     "api_version": os.getenv("AZURE_OPENAI_API_VERSION"),
 }
 
-OPENAI_PARAMS = {
-    "api_key": os.getenv("OPENAI_API_KEY"),
-    "api_base": os.getenv("OPENAI_API_BASE"),
-    "api_type": os.getenv("OPENAI_API_TYPE"),
-    "api_version": os.getenv("OPENAI_API_VERSION"),
-}
-
 SEED = 123

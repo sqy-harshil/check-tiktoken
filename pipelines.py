@@ -120,7 +120,6 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
 
 
         # Step 3: Evaluate Ratings
-        print("Evaluating Ratings")
         ratings, rating_usage = get_ratings(transcript, EVALUATE_PARAMETERS)
         ratingsObject = RatingsObject(
             customer_budget=ratings["customer_budget"],

@@ -132,7 +132,6 @@ def get_summary(transcript, function):
 
     summary = openai.ChatCompletion.create(
         **AZURE_OPENAI_PARAMS,
-        seed=SEED,
         messages=[
             {"role": "user", "content": "Conversation: \n\n" + transcript},
             {"role": "system", "content": summary_system_prompt},
@@ -156,7 +155,7 @@ def get_summary(transcript, function):
 def get_ratings(diarized_transcript, function):
     """Get an AI powered parameter evaluation"""
 
-    print("Preparing Ratings")
+    print("Evaluating Ratings")
 
     ratings_completion = openai.ChatCompletion.create(
         **AZURE_OPENAI_PARAMS,

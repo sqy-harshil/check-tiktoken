@@ -9,6 +9,7 @@ from fastapi.security import APIKeyHeader
 from config import CALL_ANALYSIS_API_KEY
 from models import (
     AudioRequest,
+    CallMetadata,
     DetailedAudioResponse,
     UsageObject,
     DiarizedTranscriptObject,
@@ -71,8 +72,10 @@ def process(
     print(f"\033[36mprocessing call: {audio_url.mp3_url}\033[0m")
     print()
 
+    mp3 = audio_url.mp3_url
+
     try:
-        mp3_to_insert = {"mp3": audio_url.mp3_url}
+        mp3_to_insert = {"mp3": mp3}
         inserted_object = collection.insert_one(mp3_to_insert)
         inserted_object_id = inserted_object.inserted_id
 
@@ -86,6 +89,7 @@ def process(
             }
 
             document = {
+                "sales_lead_info": audio_url.sales_lead_info.dict(), 
                 "timestamp": ObjectId(inserted_object_id).generation_time,
                 "logs": log,
             }
@@ -97,6 +101,7 @@ def process(
                 "error_description": str(e.detail),
             }
             document = {
+                "sales_lead_info": audio_url.sales_lead_info.dict(),
                 "timestamp": ObjectId(inserted_object_id).generation_time,
                 "logs": log,
             }
@@ -115,10 +120,15 @@ def process(
         fetched_object = collection.find_one({"mp3": audio_url.mp3_url})
 
         try:
-            audio = fetched_object["mp3"]
-            audio_url = AudioRequest(mp3_url=audio)
+            sales_lead = fetched_object["sales_lead_info"]
+            sales_lead_info = CallMetadata(**sales_lead)
         except KeyError:
-            audio_url = None
+            sales_lead_info = None
+
+        try:
+            mp3 = fetched_object["mp3"]
+        except KeyError:
+            mp3 = None
 
         try:
             mongodb_ratings = fetched_object["analysis"]
@@ -145,7 +155,8 @@ def process(
             token_usage = None
 
         processed_analysis = DetailedAudioResponse(
-            mp3=audio_url,
+            mp3=mp3,
+            sales_lead_info=sales_lead_info,
             ratings=ratings,
             script=transcript,
             summary=summary,

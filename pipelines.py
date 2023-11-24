@@ -176,7 +176,8 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
 
         # Step 5: Clubbing all the objects together
         analysis_object = {
-            "mp3": audio,
+            "mp3": mp3,
+            "sales_lead_info": audio.sales_lead_info,
             "ratings": ratingsObject,
             "summary": summaryObject,
             "script": diarizedTranscriptObject,

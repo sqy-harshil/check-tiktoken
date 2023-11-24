@@ -33,6 +33,15 @@ EVALUATE_PARAMETERS = {
             },
             "customer_budget": {
                 "type": "string",
+                "enum": [
+                    "Less than 40 lakhs",
+                    "Between 40 lakhs and 75 lakhs",
+                    "Between 75 lakhs and 1.25 crore",
+                    "Between 1.25 crore and 2 crore",
+                    "Between 2 crore and 3 crore",
+                    "More than 3 crore",
+                    "Budget not disclosed",
+                ],
                 "description": ratings_customer_budget,
             },
             "customer_preferences": {
@@ -40,6 +49,16 @@ EVALUATE_PARAMETERS = {
                 "description": ratings_customer_preferences,
             },
         },
+        "required": [
+            "rudeness_or_politeness_metric", 
+            "salesperson_company_introduction",
+            "meeting_request",
+            "salesperson_understanding_of_customer_requirements",
+            "customer_sentiment_by_the_end_of_call",
+            "customer_eagerness_to_buy",
+            "customer_budget",
+            "customer_preferences"
+        ]
     },
 }
 
@@ -91,5 +110,12 @@ SUMMARIZE_CALL = {
                 "description": summary_meeting_request_attempt,
             },
         },
+        "required": [
+            "title",
+            "discussion_points",
+            "customer_queries",
+            "next_action_items",
+            "meeting_request_attempt"
+        ]
     },
 }

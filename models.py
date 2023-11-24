@@ -16,6 +16,7 @@ class RatingsObject(BaseModel):
     rudeness_or_politeness_metric: Optional[int] = None
     salesperson_company_introduction: Optional[int] = None
     meeting_request: Optional[int] = None
+    salesperson_convincing_abilities: Optional[int] = None
     salesperson_understanding_of_customer_requirements: Optional[int] = None
     customer_sentiment_by_the_end_of_call: Optional[int] = None
     customer_eagerness_to_buy: Optional[int] = None

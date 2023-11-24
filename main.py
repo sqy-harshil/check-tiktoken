@@ -69,7 +69,7 @@ def process(
     print()
     print("-" * 150)
     print()
-    print(f"\033[36mprocessing call: {audio_url.mp3_url}\033[0m")
+    print(f"\033[36mprocessing {audio_url.sales_lead_info.salesperson_name}'s call ({audio_url.sales_lead_info.lead_id}):\n{audio_url.mp3_url}\033[0m")
     print()
 
     mp3 = audio_url.mp3_url

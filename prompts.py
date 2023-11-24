@@ -1,7 +1,6 @@
 # Ratings
 
-ratings_system_prompt = """You are a helpful real-estate sales assistant. Based on the transcript log between a human salesperson and a customer, analyze the following parameters:\n
-
+ratings_system_prompt = """You are a helpful real-estate sales assistant of SquareYards company. Based on the transcript log between a human salesperson and a customer, analyze the parameters. While analyzing parameters do not be diplomatic, try to be as accurate as possible. You are supposed to rate in the form of categories according to the rating scale provided for every parameter. Make sure you stick to that rating scale: These are the parameters that you're supposed to analyze.
     1. rudeness_or_politeness_metric
     2. salesperson_company_introduction
     3. meeting_request
@@ -10,8 +9,9 @@ ratings_system_prompt = """You are a helpful real-estate sales assistant. Based 
     6. customer_eagerness_to_buy
     7. customer_budget
     8. customer_preferences
+    9. salesperson_convincing_abilities
 
-"""
+    """.strip()
 
 
 ratings_rudeness_politeness = """Assign a rating to the salesperson based on his rudeness and politeness. Refer to the below rating scale.
@@ -21,23 +21,23 @@ ratings_rudeness_politeness = """Assign a rating to the salesperson based on his
     3: Moderately Polite: The conversation leans towards a higher level of politeness from the salesperson's side. He may use courteous language, expressions of consideration, and a friendly tone.
     4: Extremely Polite: The conversation is exceptionally polite from the salesperson's side and he is demonstrating a very formal language, deferential phrases, and possessing a strong focus on being respectful and considerate.
 
-""".strip()
+    """.strip()
 
 
 ratings_company_introduction = """It is essential for the SquareYards salesperson to initiate the conversation by introducing themselves and also give background information about SquareYards from their notes. 
 
-<notes>
-    Square Yards is India's leading real estate platform, offering comprehensive services for property transactions, from buying and selling to renting. It serves as a one-stop solution for various property-related needs, including loan assistance and interior design services, all available under one roof.
-</notes>
+    <notes>
+        Square Yards is India's leading real estate platform, offering comprehensive services for property transactions, from buying and selling to renting. It serves as a one-stop solution for various property-related needs, including loan assistance and interior design services, all available under one roof.
+    </notes>
 
-Evaluate the salesperson's performance with regard to introducing the company. This parameter should be rated based on the following rating scale:
+    Evaluate the salesperson's performance with regard to introducing the company. This parameter should be rated based on the following rating scale:
 
-    1: If the salesperson's introduction is limited to a basic self-introduction and does not include any detail of SquareYards from the notes.
-    2: If the salesperson simply says that he is from SquareYards along with introducing themselves.
-    3: If the salesperson includes only a few points about SquareYards from his notes but still does not include all the points from his notes along with introducing themselves.
-    4: If the salesperson includes all the details about SquareYards from his notes along with introducing themselves.
+        1: If the salesperson's introduction is limited to a basic self-introduction and does not include any detail of SquareYards from the notes.
+        2: If the salesperson simply says that he is from SquareYards along with introducing themselves.
+        3: If the salesperson includes only a few points about SquareYards from his notes but still does not include all the points from his notes along with introducing themselves.
+        4: If the salesperson includes all the details about SquareYards from his notes along with introducing themselves.
 
-""".strip()
+    """.strip()
 
 
 ratings_meeting_request = """
@@ -56,7 +56,18 @@ ratings_meeting_request = """
     3. Moderate Effort: The salesperson actively attempted to engage the customer by explaining property details, responding to queries, and suggesting further communication channels.
 
     4. High Effort with Clear Intent for Further Interaction: The salesperson was highly engaged, providing detailed information, addressing queries comprehensively, and expressing a clear intent for a meeting or site visit. Look for a clear mention of the words "meeting" or "site visit" along with discussions on date and time for a meeting.
-""".strip()
+
+    """.strip()
+
+
+convincing_abilities = """SquareYards cares for their sales-people and their careers, on that basis it is important for SquareYards to teach the salesperson how to convince the customer for buying a property without forcing the customer. That being said, SquareYards must have an accurate rating for the salesperson's convincing abilities based on specific factors as a rating scale irrespective of the customer's sentiment, so please use the below rating scale.
+
+    1: If there is no effort made by the salesperson to convince the customer to consider a specific property as an option.
+    2: If the salesperson only shares information about the properties the customer specifically wants, and doesn't suggest more options unless the customer requests for providing more options.
+    3: If the salesperson provides alternative options but no specific details about the property without the customer explicitly requesting for more options. 
+    4: If the salesperson provides alternative options along with all the relevant details and specifications of each option he mentions to the customer. 
+
+    """.strip()
 
 
 ratings_requirement_understanding = """Rate the salesperson's ability to understand customer requirements based on the following criteria, using a scale of 1 to 4, where 1 indicates poor performance and 4 indicates effective performance on the basis of these points:
@@ -79,29 +90,28 @@ ratings_requirement_understanding = """Rate the salesperson's ability to underst
 
 ratings_customer_sentiment = """Rate the customer's sentiment by the end of the call based on their satisfaction and likelihood to continue engagement with the salesperson. Use a scale of 1 to 4, where 1 indicates the lowest level of satisfaction or likelihood, and 4 indicates the highest level of satisfaction or likelihood. 
 
-NOTE: More the queries about the property, configuration, payment plans  and amenities from the customer, better is the sentiment of the customer
+    NOTE: More the queries about the property, configuration, payment plans  and amenities from the customer, better is the sentiment of the customer
 
+    Please use the following rating scale:
 
-Please use the following rating scale:
-
-    1: Very Dissatisfied & Unlikely to Continue: The customer seems dissatisfied with the conversation and shows no interest or intention to further engage with the salesperson. They may have expressed frustration or dissatisfaction with the interaction.  
-    2: Neutral:  The customer's sentiment is neutral by the end of the call. They neither express satisfaction or dissatisfaction, and their likelihood to continue engagement is uncertain.    
-    3: Satisfied & Likely to Continue: The customer appeared satisfied with the call and had several queries about the property's amenities or payment plans or  room configurations or asked for information about the builder/developer.  
-    4: Highly Satisfied & Very Likely to Continue: The customer inline with the salesperson's quality of suggestions for the property. They expressed strong willingness to continue their interaction with the salesperson and agreed to connect via alternative communication methods like WhatsApp or Email, underscoring their eagerness to continue the engagement in the future with the salesperson or SquareYards.
+        1: Very Dissatisfied & Unlikely to Continue: The customer seems dissatisfied with the conversation and shows no interest or intention to further engage with the salesperson. They may have expressed frustration or dissatisfaction with the interaction.  
+        2: Neutral:  The customer's sentiment is neutral by the end of the call. They neither express satisfaction or dissatisfaction, and their likelihood to continue engagement is uncertain.    
+        3: Satisfied & Likely to Continue: The customer appeared satisfied with the call and had several queries about the property's amenities or payment plans or  room configurations or asked for information about the builder/developer.  
+        4: Highly Satisfied & Very Likely to Continue: The customer inline with the salesperson's quality of suggestions for the property. They expressed strong willingness to continue their interaction with the salesperson and agreed to connect via alternative communication methods like WhatsApp or Email, underscoring their eagerness to continue the engagement in the future with the salesperson or SquareYards.
 
     """.strip()
 
 
 ratings_customer_eagerness = """Evaluate the customer's willingness to buy the property based on their level of enthusiasm and interest, using a scale of 1 to 4, where 1 indicates minimal eagerness and 4 indicates strong eagerness to buy in the near future.
 
-NOTE: Extremely eager means that the customer shows clear indication by enquiring  about possession, payment plans, property site visits.  
+    NOTE: Extremely eager means that the customer shows clear indication by enquiring  about possession, payment plans, property site visits.  
 
-Please use the following rating scale:
+    Please use the following rating scale:
 
-    1: Not Eager to Buy:  The customer's tone and expressions suggest a lack of interest or eagerness to make a purchase. They may have expressed doubts, hesitation, or disinterest in proceeding with the property transaction.   
-    2: Slightly Interested: The customer exhibits mild interest in buying the property. They may have asked questions or shown some curiosity, but their overall eagerness remains subdued. 
-    3: Very Interested: The customer is interested in buying the property and expresses enthusiasm about its features, potential benefits, or suitability. They may have mentioned specific reasons for their interest. However, there is no clear intent to buy a property.    
-    4: Extremely Eager to Buy: The customer is extremely eager and enthusiastic about buying the property in the near future. They may have shown strong excitement, mentioned intentions of proceeding, or expressed a sense of urgency.
+        1: Not Eager to Buy:  The customer's tone and expressions suggest a lack of interest or eagerness to make a purchase. They may have expressed doubts, hesitation, or disinterest in proceeding with the property transaction.   
+        2: Slightly Interested: The customer exhibits mild interest in buying the property. They may have asked questions or shown some curiosity, but their overall eagerness remains subdued. 
+        3: Very Interested: The customer is interested in buying the property and expresses enthusiasm about its features, potential benefits, or suitability. They may have mentioned specific reasons for their interest. However, there is no clear intent to buy a property.    
+        4: Extremely Eager to Buy: The customer is extremely eager and enthusiastic about buying the property in the near future. They may have shown strong excitement, mentioned intentions of proceeding, or expressed a sense of urgency.
 
     """.strip()
 
@@ -138,4 +148,4 @@ summary_customer_queries = "The queries raised by the customer regarding the pro
 
 summary_next_action_items = "Based on the conversation, what are the next action items for the salesperson in the form of bullet points."
 
-summary_meeting_request_attempt = "Analyze the transcript between a real estate salesperson and a customer for a real estate company.\n\n1. Detection of Attempt for Meeting Request:\n   - Examine the provided call transcript and determine if the salesperson has made any attempt to schedule a site visit or property visits with the customer.\n   - If there is an attempt, provide details on what the salesperson said or did to initiate the meeting request.\n   - If there is no attempt, explicitly state that the salesperson did not make any effort to schedule a site visit or property visits.\n\n2. Zig Ziglar's Sales Strategies:\n   - After analyzing the call, offer strategies based on the teachings of the renowned salesperson Zig Ziglar on how the salesperson could handle similar customers in the future.\n   - Provide actionable advice and insights derived from Zig Ziglar's approach to enhance the salesperson's skills and increase the likelihood of successful meeting requests.\n\nEnsure the response is comprehensive, providing both an analysis of the current call and practical strategies inspired by Zig Ziglar for future interactions. If there are multiple attempts in the call, focus on the most significant or representative one. The goal is to improve the salesperson's approach and success in securing site visits or property visits."
+summary_meeting_request_attempt = "Based on the conversation, analyze if the salesperson tried to fix a meeting with the customer / asks the customer for a site visit or not. Start the short analysis by stating if the salesperson made an attempt for site visit / meeting request or not. Next, give some improvement suggestions as to how should the salesperson should have convinced the customer for a site visit or meeting by suggesting strategies of top sales people like Zig Ziglar, Grant Cardone and Tom Hopkins in the form of bullet points. In other words, you have give improvement suggestions to the salesperson by telling him how to handle similar customers and win them over for scheduling a personal meeting for a site visit"

@@ -102,13 +102,7 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
         # Step 2: Prepare Summary
         print("Preparing Summary")
         summary, summarizing_usage = get_summary(transcript, SUMMARIZE_CALL)
-        summaryObject = SummaryObject(
-            title=summary["title"],
-            discussion_points=summary["discussion_points"],
-            customer_queries=summary["customer_queries"],
-            meeting_request_attempt=summary["meeting_request_attempt"],
-            next_action_items=summary["next_action_items"],
-        )
+        summaryObject = SummaryObject(**summary)
         collection.update_one(
             {"mp3": mp3},
             {
@@ -121,16 +115,7 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
 
         # Step 3: Evaluate Ratings
         ratings, rating_usage = get_ratings(transcript, EVALUATE_PARAMETERS)
-        ratingsObject = RatingsObject(
-            customer_budget=ratings["customer_budget"],
-            customer_eagerness_to_buy=ratings["customer_eagerness_to_buy"],
-            customer_preferences=ratings["customer_preferences"],
-            customer_sentiment_by_the_end_of_call=ratings["customer_sentiment_by_the_end_of_call"],
-            meeting_request=ratings["meeting_request"],
-            rudeness_or_politeness_metric=ratings["rudeness_or_politeness_metric"],
-            salesperson_company_introduction=ratings["salesperson_company_introduction"],
-            salesperson_understanding_of_customer_requirements=ratings["salesperson_understanding_of_customer_requirements"],
-        )
+        ratingsObject = RatingsObject(**ratings)
         collection.update_one(
             {"mp3": mp3},
             {
@@ -159,11 +144,7 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
             + labelling_usage["total_tokens"]
             + summarizing_usage["total_tokens"]
         )
-        usageObject = UsageObject(
-            prompt_tokens=usage["prompt_tokens"],
-            completion_tokens=usage["completion_tokens"],
-            total_tokens=usage["total_tokens"],
-        )
+        usageObject = UsageObject(**usage)
         collection.update_one(
             {"mp3": mp3},
             {

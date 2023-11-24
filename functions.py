@@ -27,6 +27,10 @@ EVALUATE_PARAMETERS = {
                 "type": "number",
                 "description": ratings_customer_sentiment,
             },
+            "salesperson_convincing_abilities": {
+                "type": "number",
+                "description": convincing_abilities,
+            },
             "customer_eagerness_to_buy": {
                 "type": "number",
                 "description": ratings_customer_eagerness,
@@ -53,6 +57,7 @@ EVALUATE_PARAMETERS = {
             "rudeness_or_politeness_metric", 
             "salesperson_company_introduction",
             "meeting_request",
+            "salesperson_convincing_abilities",
             "salesperson_understanding_of_customer_requirements",
             "customer_sentiment_by_the_end_of_call",
             "customer_eagerness_to_buy",

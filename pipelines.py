@@ -14,10 +14,17 @@ from helper import (
     get_diarized_output,
     get_ratings,
     get_summary,
+    count_tokens,
     get_speaker_labels,
-    validate_speaker_count
+    validate_speaker_count,
 )
-from config import DEEPGRAM_API_BASE, DEEPGRAM_TOKEN
+from config import (
+    DEEPGRAM_API_BASE,
+    DEEPGRAM_TOKEN,
+    AZURE_OPENAI_PARAMS_16K,
+    AZURE_OPENAI_PARAMS_4K,
+    TOKENS_FACTOR_OF_SAFTEY,
+)
 from mongodb import collection
 from functions import EVALUATE_PARAMETERS, SUMMARIZE_CALL, LABEL_SPEAKERS
 from models import (
@@ -42,25 +49,46 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
     labelling_usage = {
         "prompt_tokens": 0,
         "completion_tokens": 0,
-        "total_tokens": 0
+        "total_tokens": 0,
     }
 
     try:
         # Step 1: Get the Diarization & Transcript
-        raw_diarization = get_diarized_output(mp3_bytes, DEEPGRAM_TOKEN, DEEPGRAM_API_BASE)    
+        raw_diarization = get_diarized_output(
+            mp3_bytes, DEEPGRAM_TOKEN, DEEPGRAM_API_BASE
+        )
+
+        if count_tokens(transcript) >= TOKENS_FACTOR_OF_SAFTEY:
+            AZURE_OPENAI_PARAMS = AZURE_OPENAI_PARAMS_16K
+            model_config = "16k"
+        else:
+            AZURE_OPENAI_PARAMS = AZURE_OPENAI_PARAMS_4K
+            model_config = "4k"
+
+        collection.update_one(
+            {"mp3": mp3},
+            {
+                "$set": {
+                    "model_config": model_config,
+                }
+            },
+        )
 
         try:
+            print(AZURE_OPENAI_PARAMS)
             # Step 1.1.1: Validate if there are 2 speakers
             raw_diarization = validate_speaker_count(raw_diarization)
 
-
             # Step 1.2.1: Label the un-labelled speakers (Speaker:0 & Speaker:1) as salesperson and customer
-            labels, labelling_usage = get_speaker_labels(raw_diarization, LABEL_SPEAKERS)
-
+            labels, labelling_usage = get_speaker_labels(
+                raw_diarization, LABEL_SPEAKERS, AZURE_OPENAI_PARAMS
+            )
 
             # Step 1.3.1: Replace the labels in the raw transcript
             print("Replacing labelled roles")
-            transcript = raw_diarization.replace("[Speaker:0]", labels["speaker_0"]).replace("[Speaker:1]", labels["speaker_1"])
+            transcript = raw_diarization.replace(
+                "[Speaker:0]", labels["speaker_0"]
+            ).replace("[Speaker:1]", labels["speaker_1"])
             diarizedTranscriptObject = DiarizedTranscriptObject(
                 diarized_transcript=transcript
             )
@@ -77,7 +105,6 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
             print()
             print("\033[31mInvalid Number of speakers found, fixing transcript!\033[0m")
             print()
-
 
             # Step 1.1.2: Remove the wrong labels (Single speaker / More than 2 speakers) to avoid a possible confusion to the LLM
             transcript = (
@@ -98,23 +125,25 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
                 },
             )
 
-
         # Step 2: Prepare Summary
         print("Preparing Summary")
-        summary, summarizing_usage = get_summary(transcript, SUMMARIZE_CALL)
+        summary, summarizing_usage = get_summary(
+            transcript, SUMMARIZE_CALL, AZURE_OPENAI_PARAMS
+        )
         summaryObject = SummaryObject(**summary)
         collection.update_one(
             {"mp3": mp3},
             {
                 "$set": {
-                    "summary": summaryObject.dict()
+                    "summary": summaryObject.dict(),
                 }
             },
         )
 
-
         # Step 3: Evaluate Ratings
-        ratings, rating_usage = get_ratings(transcript, EVALUATE_PARAMETERS)
+        ratings, rating_usage = get_ratings(
+            transcript, EVALUATE_PARAMETERS, AZURE_OPENAI_PARAMS
+        )
         ratingsObject = RatingsObject(**ratings)
         collection.update_one(
             {"mp3": mp3},
@@ -124,7 +153,6 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
                 }
             },
         )
-
 
         # Step 4: Analyze the API Calls' Usage
         print("Preparing Usage")
@@ -149,11 +177,10 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
             {"mp3": mp3},
             {
                 "$set": {
-                    "gpt35_usage": usageObject.dict()
+                    "gpt35_usage": usageObject.dict(),
                 }
             },
         )
-
 
         # Step 5: Clubbing all the objects together
         analysis_object = {

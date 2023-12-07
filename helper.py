@@ -5,17 +5,21 @@ import re
 from io import BytesIO
 
 import openai
+import tiktoken
 from typing import Union
 from jq import jq
 from fastapi import HTTPException
 
-from config import (
-    AZURE_OPENAI_PARAMS,
-    SEED,
-)
+from config import SEED, TIKTOKEN_MODEL_NAME
 from prompts import *
 from exceptions import InvalidSpeakerCountException
 from enums import HttpStatusCode
+
+
+def count_tokens(string):
+    encoding = tiktoken.encoding_for_model(TIKTOKEN_MODEL_NAME)
+
+    return len(encoding.encode(string))
 
 
 def remove_whitespace_between_brackets(text):
@@ -95,7 +99,7 @@ def get_diarized_output(audio_data, token, deepgram_api_base):
     return remove_whitespace_between_brackets("\n".join(diarized_output))
 
 
-def get_speaker_labels(diarized_output, function):
+def get_speaker_labels(diarized_output, function, AZURE_OPENAI_PARAMS):
     """Get the corresponding labels for the speakers on the basis of a diarized transcript"""
 
     print("Labelling Speakers")
@@ -127,7 +131,7 @@ def get_speaker_labels(diarized_output, function):
         )
 
 
-def get_summary(transcript, function):
+def get_summary(transcript, function, AZURE_OPENAI_PARAMS):
     """Get an AI powered call summary"""
 
     summary = openai.ChatCompletion.create(
@@ -140,19 +144,13 @@ def get_summary(transcript, function):
         temperature=0.0,
         function_call={"name": "summarize"},
     )
-    try:
-        return (
-            json.loads(summary["choices"][0]["message"]["function_call"]["arguments"]),
-            summary["usage"],
-        )
-    except Exception:
-        raise HTTPException(
-            status_code=HttpStatusCode.BAD_REQUEST.value,
-            detail=f"Failed to generate summary",
-        )
+    return (
+        json.loads(summary["choices"][0]["message"]["function_call"]["arguments"]),
+        summary["usage"],
+    )
 
 
-def get_ratings(diarized_transcript, function):
+def get_ratings(diarized_transcript, function, AZURE_OPENAI_PARAMS):
     """Get an AI powered parameter evaluation"""
 
     print("Evaluating Ratings")

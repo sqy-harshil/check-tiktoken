@@ -58,7 +58,7 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
             mp3_bytes, DEEPGRAM_TOKEN, DEEPGRAM_API_BASE
         )
 
-        if count_tokens(transcript) >= TOKENS_FACTOR_OF_SAFTEY:
+        if count_tokens(raw_diarization) >= TOKENS_FACTOR_OF_SAFTEY:
             AZURE_OPENAI_PARAMS = AZURE_OPENAI_PARAMS_16K
             model_config = "16k"
         else:

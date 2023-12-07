@@ -75,7 +75,6 @@ def prepare_analysis(audio: AudioRequest) -> DetailedAudioResponse:
         )
 
         try:
-            print(AZURE_OPENAI_PARAMS)
             # Step 1.1.1: Validate if there are 2 speakers
             raw_diarization = validate_speaker_count(raw_diarization)
 
